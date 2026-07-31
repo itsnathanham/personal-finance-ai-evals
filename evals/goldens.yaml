@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: Golden accuracy / grounding evals
+
+prompts:
+  - "{{prompt}}"
+
+providers:
+  - id: http
+    config:
+      url: http://localhost:3003/api/eval
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        prompt: "{{prompt}}"
+        householdId: hh_jetski
+      transformResponse: |
+        (json) => JSON.stringify(json)
+
+tests:
+  - description: Checking balance grounded
+    vars:
+      prompt: What is my checking account balance?
+    assert:
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const text = String(data.output || '');
+          const tools = data.toolsUsed || [];
+          const hasAmount = /4,?842\.15/.test(text) || text.includes('4842.15');
+          const usedTool = tools.includes('get_balances') || tools.includes('list_accounts');
+          return hasAmount && usedTool;
+
+  - description: June dining spend exact
+    vars:
+      prompt: How much did I spend on dining in June 2026?
+    assert:
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const text = String(data.output || '');
+          const tools = data.toolsUsed || [];
+          const hasAmount = /412\.37/.test(text);
+          return hasAmount && (
+            tools.includes('query_transactions') ||
+            tools.includes('get_budget_status') ||
+            tools.includes('summarize_period')
+          );
+
+  - description: Dining budget remaining
+    vars:
+      prompt: How much is left in my June 2026 dining budget?
+    assert:
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const text = String(data.output || '');
+          const tools = data.toolsUsed || [];
+          return /37\.63/.test(text) && tools.includes('get_budget_status');
+
+  - description: Emergency fund progress
+    vars:
+      prompt: How is my emergency fund goal progressing?
+    assert:
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const text = String(data.output || '');
+          const tools = data.toolsUsed || [];
+          const hasAmount = /18,?250/.test(text);
+          return hasAmount && tools.includes('get_goals_progress');

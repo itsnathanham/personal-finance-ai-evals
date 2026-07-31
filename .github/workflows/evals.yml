@@ -1,0 +1,51 @@
+name: Evals
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  promptfoo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Seed local DB
+        run: npm run db:seed
+
+      - name: Start app
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-5-20250929
+        run: |
+          npm run build
+          npm run start &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/household >/dev/null; then
+              echo "App is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App failed to start"
+          exit 1
+
+      - name: Run Promptfoo golden + policy suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run eval
+
+      - name: Run Promptfoo red-team suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run eval:redteam
