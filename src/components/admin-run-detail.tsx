@@ -47,22 +47,39 @@ export function AdminRunDetail({ runId }: { runId: string }) {
   const [data, setData] = useState<RunDetail | null>(null);
   const [filter, setFilter] = useState<"all" | "pass" | "fail">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      const localRaw = sessionStorage.getItem(`hfc_eval_run_${runId}`);
+      if (localRaw) {
+        try {
+          const local = JSON.parse(localRaw) as RunDetail;
+          if (!cancelled) setData(local);
+          return;
+        } catch {
+          // fall through to API
+        }
+      }
+
       const res = await fetch(`/api/admin/eval-runs/${runId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (!cancelled) setError("Run not found (server history is ephemeral without DATABASE_URL).");
+        return;
+      }
       const json = await res.json();
+      if (json.localOnly) {
+        if (!cancelled) {
+          setError("This run was only stored in this browser session.");
+        }
+        return;
+      }
       if (!cancelled) setData(json);
     }
     void load();
-    const timer = setInterval(() => {
-      void load();
-    }, 2000);
     return () => {
       cancelled = true;
-      clearInterval(timer);
     };
   }, [runId]);
 
@@ -72,6 +89,15 @@ export function AdminRunDetail({ runId }: { runId: string }) {
     if (filter === "fail") return data.cases.filter((c) => c.pass === false);
     return data.cases;
   }, [data, filter]);
+
+  if (error && !data) {
+    return (
+      <div className="admin-shell">
+        <p className="admin-error">{error}</p>
+        <Link href="/admin">Back to admin</Link>
+      </div>
+    );
+  }
 
   if (!data) {
     return <p className="admin-loading">Loading run…</p>;

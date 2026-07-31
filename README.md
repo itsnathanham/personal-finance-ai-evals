@@ -33,10 +33,10 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 
 1. Sign in with `ADMIN_PASSWORD`
 2. Select suites (**Goldens**, **Policy**, **Red team**) and one or more **Claude** models
-3. Click **Run evals** — progress updates live
-4. Open a run in **History** for pass rate, per-model scores, and expandable case details
+3. Click **Run evals** — the browser runs each case against `/api/eval` (works on Vercel serverless)
+4. When finished you’re taken to the run detail page (pass rate, per-model scores, expandable cases)
 
-The dashboard runs evals **in-app** (not the Promptfoo CLI). YAML under `evals/` remains the case source of truth; TypeScript graders mirror the asserts.
+History is kept in this browser session (and best-effort on the server). For durable server-side history across refreshes/devices, set a Neon `DATABASE_URL` on Vercel.
 
 `http://localhost:15500` is **Promptfoo’s own viewer** (`npm run eval:view`) — optional power-user tool, separate from `/admin`.
 

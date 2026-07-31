@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type CatalogCase = {
+  id: string;
+  description: string;
+  prompt: string;
+};
+
 type Catalog = {
   models: Array<{ id: string; label: string; description: string }>;
   suites: Array<{
@@ -11,6 +17,7 @@ type Catalog = {
     name: string;
     description: string;
     caseCount: number;
+    cases: CatalogCase[];
   }>;
 };
 
@@ -29,7 +36,48 @@ type RunSummary = {
   startedAt: string;
   finishedAt: string | null;
   errorMessage: string | null;
+  summary?: {
+    passRate: number;
+    perModel: Record<
+      string,
+      { passed: number; total: number; passRate: number }
+    >;
+  } | null;
 };
+
+type CaseResult = {
+  id: string;
+  suiteId: string;
+  caseId: string;
+  description: string;
+  modelId: string;
+  prompt: string;
+  output: string | null;
+  toolsUsed: string[];
+  pass: boolean;
+  failReasons: string[];
+  latencyMs: number | null;
+  errorMessage: string | null;
+};
+
+const LOCAL_HISTORY_KEY = "hfc_eval_history_v1";
+
+function loadLocalHistory(): Array<{ run: RunSummary; cases: CaseResult[] }> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(LOCAL_HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as Array<{ run: RunSummary; cases: CaseResult[] }>;
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalHistory(
+  entries: Array<{ run: RunSummary; cases: CaseResult[] }>,
+) {
+  sessionStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(entries.slice(0, 20)));
+}
 
 export function AdminDashboard() {
   const router = useRouter();
@@ -38,8 +86,14 @@ export function AdminDashboard() {
   const [suiteIds, setSuiteIds] = useState<string[]>(["goldens"]);
   const [modelIds, setModelIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState({
+    completed: 0,
+    total: 0,
+    passed: 0,
+    failed: 0,
+    label: "",
+  });
 
   const load = useCallback(async () => {
     const [catalogRes, runsRes] = await Promise.all([
@@ -53,7 +107,16 @@ export function AdminDashboard() {
     const catalogJson = await catalogRes.json();
     const runsJson = await runsRes.json();
     setCatalog(catalogJson);
-    setRuns(runsJson.runs ?? []);
+    const serverRuns = (runsJson.runs ?? []) as RunSummary[];
+    const local = loadLocalHistory().map((e) => e.run);
+    const byId = new Map<string, RunSummary>();
+    for (const r of [...local, ...serverRuns]) byId.set(r.id, r);
+    setRuns(
+      [...byId.values()].sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+      ),
+    );
     setModelIds((prev) =>
       prev.length > 0
         ? prev
@@ -67,54 +130,235 @@ export function AdminDashboard() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!activeRunId) return;
-    const timer = setInterval(async () => {
-      const res = await fetch(`/api/admin/eval-runs/${activeRunId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const run = data.run as RunSummary;
-      setRuns((prev) => {
-        const others = prev.filter((r) => r.id !== run.id);
-        return [run, ...others];
-      });
-      if (run.status === "completed" || run.status === "failed") {
-        setActiveRunId(null);
-        void load();
-      }
-    }, 1500);
-    return () => clearInterval(timer);
-  }, [activeRunId, load]);
-
-  const activeRun = useMemo(
-    () => runs.find((r) => r.id === activeRunId) ?? null,
-    [runs, activeRunId],
-  );
-
   function toggle(list: string[], id: string, setter: (v: string[]) => void) {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
 
+  const estimatedCases = useMemo(
+    () =>
+      (catalog?.suites
+        .filter((s) => suiteIds.includes(s.id))
+        .reduce((n, s) => n + s.caseCount, 0) ?? 0) * modelIds.length,
+    [catalog, suiteIds, modelIds],
+  );
+
   async function startRun() {
-    setStarting(true);
+    if (!catalog) return;
+    setRunning(true);
     setError(null);
+
+    const jobs: Array<{
+      suiteId: string;
+      suiteName: string;
+      caseId: string;
+      description: string;
+      prompt: string;
+      modelId: string;
+    }> = [];
+
+    for (const modelId of modelIds) {
+      for (const suite of catalog.suites.filter((s) => suiteIds.includes(s.id))) {
+        for (const c of suite.cases) {
+          jobs.push({
+            suiteId: suite.id,
+            suiteName: suite.name,
+            caseId: c.id,
+            description: c.description,
+            prompt: c.prompt,
+            modelId,
+          });
+        }
+      }
+    }
+
+    const startedAt = new Date().toISOString();
+    const results: CaseResult[] = [];
+    let passed = 0;
+    let failed = 0;
+    let errors = 0;
+
+    setProgress({
+      completed: 0,
+      total: jobs.length,
+      passed: 0,
+      failed: 0,
+      label: "Starting…",
+    });
+
     try {
-      const res = await fetch("/api/admin/eval-runs", {
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i]!;
+        setProgress({
+          completed: i,
+          total: jobs.length,
+          passed,
+          failed,
+          label: `${job.suiteName} · ${job.description} · ${job.modelId}`,
+        });
+
+        try {
+          const evalRes = await fetch("/api/eval", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: job.prompt,
+              modelId: job.modelId,
+              householdId: "hh_jetski",
+            }),
+          });
+          const evalJson = await evalRes.json();
+          if (!evalRes.ok) {
+            throw new Error(evalJson.error ?? "Eval request failed");
+          }
+
+          const gradeRes = await fetch("/api/admin/grade", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ caseId: job.caseId, result: evalJson }),
+          });
+          const gradeJson = await gradeRes.json();
+          const pass = Boolean(gradeJson.pass);
+          if (pass) passed += 1;
+          else failed += 1;
+
+          results.push({
+            id: `case_${i}_${Date.now()}`,
+            suiteId: job.suiteId,
+            caseId: job.caseId,
+            description: job.description,
+            modelId: job.modelId,
+            prompt: job.prompt,
+            output: evalJson.output ?? null,
+            toolsUsed: evalJson.toolsUsed ?? [],
+            pass,
+            failReasons: gradeJson.failReasons ?? [],
+            latencyMs: evalJson.latencyMs ?? null,
+            errorMessage: null,
+          });
+        } catch (err) {
+          errors += 1;
+          failed += 1;
+          results.push({
+            id: `case_${i}_${Date.now()}`,
+            suiteId: job.suiteId,
+            caseId: job.caseId,
+            description: job.description,
+            modelId: job.modelId,
+            prompt: job.prompt,
+            output: null,
+            toolsUsed: [],
+            pass: false,
+            failReasons: ["Runtime error"],
+            latencyMs: null,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          });
+        }
+
+        setProgress({
+          completed: i + 1,
+          total: jobs.length,
+          passed,
+          failed,
+          label: `${job.suiteName} · ${job.description} · ${job.modelId}`,
+        });
+      }
+
+      const finishedAt = new Date().toISOString();
+      const passRate =
+        results.length === 0
+          ? 0
+          : Number(((passed / results.length) * 100).toFixed(1));
+
+      const perModel: Record<
+        string,
+        { passed: number; total: number; passRate: number }
+      > = {};
+      for (const row of results) {
+        const bucket = perModel[row.modelId] ?? {
+          passed: 0,
+          total: 0,
+          passRate: 0,
+        };
+        bucket.total += 1;
+        if (row.pass) bucket.passed += 1;
+        perModel[row.modelId] = bucket;
+      }
+      for (const id of Object.keys(perModel)) {
+        const b = perModel[id]!;
+        b.passRate =
+          b.total === 0 ? 0 : Number(((b.passed / b.total) * 100).toFixed(1));
+      }
+
+      const persistRes = await fetch("/api/admin/eval-runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ suiteIds, modelIds }),
+        body: JSON.stringify({
+          suiteIds,
+          modelIds,
+          results: results.map((r) => ({
+            suiteId: r.suiteId,
+            caseId: r.caseId,
+            description: r.description,
+            modelId: r.modelId,
+            prompt: r.prompt,
+            output: r.output,
+            toolsUsed: r.toolsUsed,
+            pass: r.pass,
+            failReasons: r.failReasons,
+            latencyMs: r.latencyMs,
+            errorMessage: r.errorMessage,
+          })),
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to start run");
-        return;
+      const persistJson = await persistRes.json();
+      const runId =
+        typeof persistJson.runId === "string" && persistJson.runId.length > 0
+          ? persistJson.runId
+          : `local_${Date.now()}`;
+
+      const run: RunSummary = {
+        id: runId,
+        status: "completed",
+        suiteIds,
+        modelIds,
+        totalCases: results.length,
+        completedCases: results.length,
+        passedCases: passed,
+        failedCases: failed - errors,
+        errorCases: errors,
+        currentLabel: "Completed",
+        passRate,
+        startedAt,
+        finishedAt,
+        errorMessage: null,
+        summary: { passRate, perModel },
+      };
+
+      const history = loadLocalHistory();
+      history.unshift({ run, cases: results });
+      saveLocalHistory(history);
+      sessionStorage.setItem(
+        `hfc_eval_run_${runId}`,
+        JSON.stringify({ run, cases: results }),
+      );
+
+      if (persistJson.warning) {
+        setError(persistJson.warning);
       }
-      setActiveRunId(data.runId);
+
       await load();
-    } catch {
-      setError("Could not start eval run");
+      router.push(`/admin/runs/${runId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eval run failed");
     } finally {
-      setStarting(false);
+      setRunning(false);
+      setProgress({
+        completed: 0,
+        total: 0,
+        passed: 0,
+        failed: 0,
+        label: "",
+      });
     }
   }
 
@@ -122,11 +366,6 @@ export function AdminDashboard() {
     await fetch("/api/admin/logout", { method: "POST" });
     router.refresh();
   }
-
-  const estimatedCases =
-    (catalog?.suites
-      .filter((s) => suiteIds.includes(s.id))
-      .reduce((n, s) => n + s.caseCount, 0) ?? 0) * modelIds.length;
 
   return (
     <div className="admin-shell">
@@ -149,7 +388,8 @@ export function AdminDashboard() {
         <section className="admin-card">
           <h2>New run</h2>
           <p className="admin-help">
-            Pick suites and one or more models. Each case runs once per model.
+            Pick suites and one or more models. Each case runs once per model
+            (browser-driven, works on Vercel).
           </p>
 
           <h3>Suites</h3>
@@ -160,6 +400,7 @@ export function AdminDashboard() {
                   type="checkbox"
                   checked={suiteIds.includes(suite.id)}
                   onChange={() => toggle(suiteIds, suite.id, setSuiteIds)}
+                  disabled={running}
                 />
                 <span>
                   <strong>{suite.name}</strong>
@@ -179,6 +420,7 @@ export function AdminDashboard() {
                   type="checkbox"
                   checked={modelIds.includes(model.id)}
                   onChange={() => toggle(modelIds, model.id, setModelIds)}
+                  disabled={running}
                 />
                 <span>
                   <strong>{model.label}</strong>
@@ -196,35 +438,32 @@ export function AdminDashboard() {
             type="button"
             className="primary"
             disabled={
-              starting ||
-              suiteIds.length === 0 ||
-              modelIds.length === 0 ||
-              Boolean(activeRunId)
+              running || suiteIds.length === 0 || modelIds.length === 0
             }
             onClick={() => void startRun()}
           >
-            {starting ? "Starting…" : activeRunId ? "Run in progress…" : "Run evals"}
+            {running ? "Running evals…" : "Run evals"}
           </button>
           {error && <p className="admin-error">{error}</p>}
 
-          {activeRun && (
+          {running && (
             <div className="progress-panel">
               <div className="progress-bar">
                 <div
                   style={{
                     width: `${
-                      activeRun.totalCases === 0
+                      progress.total === 0
                         ? 0
-                        : (activeRun.completedCases / activeRun.totalCases) * 100
+                        : (progress.completed / progress.total) * 100
                     }%`,
                   }}
                 />
               </div>
               <p>
-                {activeRun.completedCases}/{activeRun.totalCases} ·{" "}
-                {activeRun.passedCases} passed · {activeRun.failedCases} failed
+                {progress.completed}/{progress.total} · {progress.passed}{" "}
+                passed · {progress.failed} failed
               </p>
-              <p className="muted">{activeRun.currentLabel}</p>
+              <p className="muted">{progress.label}</p>
             </div>
           )}
         </section>

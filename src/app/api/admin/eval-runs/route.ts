@@ -1,52 +1,58 @@
-import { desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getDb } from "@/db";
-import { evalRuns } from "@/db/schema";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { createAndStartEvalRun } from "@/lib/evals/job-runner";
+import {
+  listPersistedRuns,
+  persistCompletedRun,
+} from "@/lib/evals/job-runner";
 import { isSuiteId, type SuiteId } from "@/lib/evals/load-suites";
 import { isAllowedModelId } from "@/lib/models/registry";
 import { requireAnthropicKey } from "@/lib/model";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
+
+function mapRun(r: Awaited<ReturnType<typeof listPersistedRuns>>[number]) {
+  return {
+    id: r.id,
+    status: r.status,
+    suiteIds: JSON.parse(r.suiteIdsJson) as string[],
+    modelIds: JSON.parse(r.modelIdsJson) as string[],
+    totalCases: r.totalCases,
+    completedCases: r.completedCases,
+    passedCases: r.passedCases,
+    failedCases: r.failedCases,
+    errorCases: r.errorCases,
+    currentLabel: r.currentLabel,
+    summary: r.summaryJson ? JSON.parse(r.summaryJson) : null,
+    errorMessage: r.errorMessage,
+    startedAt: r.startedAt,
+    finishedAt: r.finishedAt,
+    passRate:
+      r.completedCases > 0
+        ? Number(((r.passedCases / r.completedCases) * 100).toFixed(1))
+        : null,
+  };
+}
 
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const db = await getDb();
-  const rows = await db
-    .select()
-    .from(evalRuns)
-    .orderBy(desc(evalRuns.startedAt))
-    .limit(50);
-
-  return NextResponse.json({
-    runs: rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      suiteIds: JSON.parse(r.suiteIdsJson) as string[],
-      modelIds: JSON.parse(r.modelIdsJson) as string[],
-      totalCases: r.totalCases,
-      completedCases: r.completedCases,
-      passedCases: r.passedCases,
-      failedCases: r.failedCases,
-      errorCases: r.errorCases,
-      currentLabel: r.currentLabel,
-      summary: r.summaryJson ? JSON.parse(r.summaryJson) : null,
-      errorMessage: r.errorMessage,
-      startedAt: r.startedAt,
-      finishedAt: r.finishedAt,
-      passRate:
-        r.completedCases > 0
-          ? Number(((r.passedCases / r.completedCases) * 100).toFixed(1))
-          : null,
-    })),
-  });
+  try {
+    const rows = await listPersistedRuns(50);
+    return NextResponse.json({ runs: rows.map(mapRun) });
+  } catch {
+    // Ephemeral serverless DB may be empty / unavailable across isolates
+    return NextResponse.json({ runs: [] });
+  }
 }
 
+/**
+ * Persist a completed client-orchestrated run.
+ * Cases are executed by the browser via /api/eval so Vercel serverless
+ * does not rely on fire-and-forget background work.
+ */
 export async function POST(req: Request) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,29 +66,41 @@ export async function POST(req: Request) {
   const body = await req.json();
   const suiteIdsRaw = Array.isArray(body.suiteIds) ? body.suiteIds : [];
   const modelIdsRaw = Array.isArray(body.modelIds) ? body.modelIds : [];
+  const resultsRaw = Array.isArray(body.results) ? body.results : [];
 
   const suiteIds = suiteIdsRaw.filter(
-    (id: unknown): id is SuiteId =>
-      typeof id === "string" && isSuiteId(id),
+    (id: unknown): id is SuiteId => typeof id === "string" && isSuiteId(id),
   );
   const modelIds = modelIdsRaw.filter(
     (id: unknown): id is string =>
       typeof id === "string" && isAllowedModelId(id),
   );
 
-  if (suiteIds.length === 0) {
+  if (suiteIds.length === 0 || modelIds.length === 0 || resultsRaw.length === 0) {
     return NextResponse.json(
-      { error: "Select at least one suite" },
-      { status: 400 },
-    );
-  }
-  if (modelIds.length === 0) {
-    return NextResponse.json(
-      { error: "Select at least one model" },
+      { error: "suiteIds, modelIds, and results are required" },
       { status: 400 },
     );
   }
 
-  const runId = await createAndStartEvalRun({ suiteIds, modelIds });
-  return NextResponse.json({ runId }, { status: 201 });
+  try {
+    const runId = await persistCompletedRun({
+      suiteIds,
+      modelIds,
+      results: resultsRaw,
+    });
+    return NextResponse.json({ runId }, { status: 201 });
+  } catch (err) {
+    // Still return success payload so the UI can show results from the client
+    return NextResponse.json(
+      {
+        runId: null,
+        warning:
+          "Run finished in the browser but could not be persisted on this server isolate. Add a Neon DATABASE_URL for durable history on Vercel.",
+        error: err instanceof Error ? err.message : String(err),
+        results: resultsRaw,
+      },
+      { status: 200 },
+    );
+  }
 }
