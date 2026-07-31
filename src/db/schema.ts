@@ -141,6 +141,10 @@ export const evalCaseResults = pgTable(
     pass: boolean("pass"),
     failReasonsJson: text("fail_reasons_json"),
     latencyMs: integer("latency_ms"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    totalTokens: integer("total_tokens"),
+    estimatedCostUsd: text("estimated_cost_usd"),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  formatEstCost,
+  formatLatency,
+} from "@/lib/evals/format-metrics";
+import {
+  buildRunSummary,
+  type RunSummaryMetrics,
+} from "@/lib/models/pricing";
 
 type CatalogCase = {
   id: string;
@@ -10,7 +18,7 @@ type CatalogCase = {
   prompt: string;
 };
 
-type Catalog = {
+export type Catalog = {
   models: Array<{ id: string; label: string; description: string }>;
   suites: Array<{
     id: string;
@@ -36,13 +44,7 @@ type RunSummary = {
   startedAt: string;
   finishedAt: string | null;
   errorMessage: string | null;
-  summary?: {
-    passRate: number;
-    perModel: Record<
-      string,
-      { passed: number; total: number; passRate: number }
-    >;
-  } | null;
+  summary?: RunSummaryMetrics | null;
 };
 
 type CaseResult = {
@@ -57,6 +59,10 @@ type CaseResult = {
   pass: boolean;
   failReasons: string[];
   latencyMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  estimatedCostUsd: number | null;
   errorMessage: string | null;
 };
 
@@ -79,12 +85,30 @@ function saveLocalHistory(
   sessionStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(entries.slice(0, 20)));
 }
 
-export function AdminDashboard() {
+function mergeRuns(serverRuns: RunSummary[]): RunSummary[] {
+  const local = loadLocalHistory().map((e) => e.run);
+  const byId = new Map<string, RunSummary>();
+  for (const r of [...local, ...serverRuns]) byId.set(r.id, r);
+  return [...byId.values()].sort(
+    (a, b) =>
+      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+  );
+}
+
+export function AdminDashboard({
+  initialCatalog,
+  initialRuns = [],
+}: {
+  initialCatalog: Catalog;
+  initialRuns?: RunSummary[];
+}) {
   const router = useRouter();
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [catalog] = useState(initialCatalog);
+  const [runs, setRuns] = useState<RunSummary[]>(() => mergeRuns(initialRuns));
   const [suiteIds, setSuiteIds] = useState<string[]>(["goldens"]);
-  const [modelIds, setModelIds] = useState<string[]>([]);
+  const [modelIds, setModelIds] = useState<string[]>(() =>
+    initialCatalog.models[0] ? [initialCatalog.models[0].id] : [],
+  );
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({
@@ -95,40 +119,19 @@ export function AdminDashboard() {
     label: "",
   });
 
-  const load = useCallback(async () => {
-    const [catalogRes, runsRes] = await Promise.all([
-      fetch("/api/admin/catalog"),
-      fetch("/api/admin/eval-runs"),
-    ]);
-    if (catalogRes.status === 401 || runsRes.status === 401) {
+  const refreshRuns = useCallback(async () => {
+    const runsRes = await fetch("/api/admin/eval-runs");
+    if (runsRes.status === 401) {
       router.refresh();
       return;
     }
-    const catalogJson = await catalogRes.json();
     const runsJson = await runsRes.json();
-    setCatalog(catalogJson);
-    const serverRuns = (runsJson.runs ?? []) as RunSummary[];
-    const local = loadLocalHistory().map((e) => e.run);
-    const byId = new Map<string, RunSummary>();
-    for (const r of [...local, ...serverRuns]) byId.set(r.id, r);
-    setRuns(
-      [...byId.values()].sort(
-        (a, b) =>
-          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-      ),
-    );
-    setModelIds((prev) =>
-      prev.length > 0
-        ? prev
-        : catalogJson.models?.[0]
-          ? [catalogJson.models[0].id]
-          : [],
-    );
+    setRuns(mergeRuns((runsJson.runs ?? []) as RunSummary[]));
   }, [router]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    setRuns(mergeRuns(initialRuns));
+  }, [initialRuns]);
 
   function toggle(list: string[], id: string, setter: (v: string[]) => void) {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -136,14 +139,13 @@ export function AdminDashboard() {
 
   const estimatedCases = useMemo(
     () =>
-      (catalog?.suites
+      catalog.suites
         .filter((s) => suiteIds.includes(s.id))
-        .reduce((n, s) => n + s.caseCount, 0) ?? 0) * modelIds.length,
+        .reduce((n, s) => n + s.caseCount, 0) * modelIds.length,
     [catalog, suiteIds, modelIds],
   );
 
   async function startRun() {
-    if (!catalog) return;
     setRunning(true);
     setError(null);
 
@@ -233,6 +235,10 @@ export function AdminDashboard() {
             pass,
             failReasons: gradeJson.failReasons ?? [],
             latencyMs: evalJson.latencyMs ?? null,
+            inputTokens: evalJson.inputTokens ?? null,
+            outputTokens: evalJson.outputTokens ?? null,
+            totalTokens: evalJson.totalTokens ?? null,
+            estimatedCostUsd: evalJson.estimatedCostUsd ?? null,
             errorMessage: null,
           });
         } catch (err) {
@@ -250,6 +256,10 @@ export function AdminDashboard() {
             pass: false,
             failReasons: ["Runtime error"],
             latencyMs: null,
+            inputTokens: null,
+            outputTokens: null,
+            totalTokens: null,
+            estimatedCostUsd: null,
             errorMessage: err instanceof Error ? err.message : String(err),
           });
         }
@@ -264,30 +274,7 @@ export function AdminDashboard() {
       }
 
       const finishedAt = new Date().toISOString();
-      const passRate =
-        results.length === 0
-          ? 0
-          : Number(((passed / results.length) * 100).toFixed(1));
-
-      const perModel: Record<
-        string,
-        { passed: number; total: number; passRate: number }
-      > = {};
-      for (const row of results) {
-        const bucket = perModel[row.modelId] ?? {
-          passed: 0,
-          total: 0,
-          passRate: 0,
-        };
-        bucket.total += 1;
-        if (row.pass) bucket.passed += 1;
-        perModel[row.modelId] = bucket;
-      }
-      for (const id of Object.keys(perModel)) {
-        const b = perModel[id]!;
-        b.passRate =
-          b.total === 0 ? 0 : Number(((b.passed / b.total) * 100).toFixed(1));
-      }
+      const summary = buildRunSummary(results);
 
       const persistRes = await fetch("/api/admin/eval-runs", {
         method: "POST",
@@ -306,6 +293,10 @@ export function AdminDashboard() {
             pass: r.pass,
             failReasons: r.failReasons,
             latencyMs: r.latencyMs,
+            inputTokens: r.inputTokens,
+            outputTokens: r.outputTokens,
+            totalTokens: r.totalTokens,
+            estimatedCostUsd: r.estimatedCostUsd,
             errorMessage: r.errorMessage,
           })),
         }),
@@ -327,11 +318,11 @@ export function AdminDashboard() {
         failedCases: failed - errors,
         errorCases: errors,
         currentLabel: "Completed",
-        passRate,
+        passRate: summary.passRate,
         startedAt,
         finishedAt,
         errorMessage: null,
-        summary: { passRate, perModel },
+        summary,
       };
 
       const history = loadLocalHistory();
@@ -346,7 +337,7 @@ export function AdminDashboard() {
         setError(persistJson.warning);
       }
 
-      await load();
+      await refreshRuns();
       router.push(`/admin/runs/${runId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Eval run failed");
@@ -388,13 +379,13 @@ export function AdminDashboard() {
         <section className="admin-card">
           <h2>New run</h2>
           <p className="admin-help">
-            Pick suites and one or more models. Each case runs once per model
-            (browser-driven, works on Vercel).
+            Pick suites and one or more models. Compare pass rate, est. cost,
+            and avg latency across models.
           </p>
 
           <h3>Suites</h3>
           <div className="chip-grid">
-            {catalog?.suites.map((suite) => (
+            {catalog.suites.map((suite) => (
               <label key={suite.id} className="chip">
                 <input
                   type="checkbox"
@@ -414,7 +405,7 @@ export function AdminDashboard() {
 
           <h3>Models</h3>
           <div className="chip-grid">
-            {catalog?.models.map((model) => (
+            {catalog.models.map((model) => (
               <label key={model.id} className="chip">
                 <input
                   type="checkbox"
@@ -482,6 +473,8 @@ export function AdminDashboard() {
                       {run.status}
                     </strong>
                     <span>
+                      {formatEstCost(run.summary?.estimatedCostUsd)} est. ·{" "}
+                      {formatLatency(run.summary?.avgLatencyMs)} avg ·{" "}
                       {run.suiteIds.join(", ")} · {run.modelIds.length} model
                       {run.modelIds.length === 1 ? "" : "s"}
                     </span>

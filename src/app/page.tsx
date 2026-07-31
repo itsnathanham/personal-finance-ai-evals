@@ -17,65 +17,68 @@ export const dynamic = "force-dynamic";
 
 async function loadHousehold() {
   const db = await getDb();
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, DEMO_USER_ID))
-    .limit(1);
+  const monthStart = `${DEMO_MONTH}-01`;
+  const monthEnd = `${DEMO_MONTH}-31`;
 
-  const accountRows = await db
-    .select()
-    .from(accounts)
-    .where(eq(accounts.householdId, DEMO_HOUSEHOLD_ID));
-
-  const recentTx = await db
-    .select()
-    .from(transactions)
-    .where(eq(transactions.householdId, DEMO_HOUSEHOLD_ID))
-    .orderBy(desc(transactions.postedAt))
-    .limit(12);
-
-  const budgetRows = await db
-    .select()
-    .from(budgets)
-    .where(
-      and(
-        eq(budgets.householdId, DEMO_HOUSEHOLD_ID),
-        eq(budgets.month, DEMO_MONTH),
-      ),
-    );
-
-  const budgetStatus = [];
-  for (const b of budgetRows) {
-    const spentRows = await db
-      .select({
-        total: sql<string>`coalesce(abs(sum(${transactions.amount})), 0)`,
-      })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.householdId, DEMO_HOUSEHOLD_ID),
-          eq(transactions.category, b.category),
-          gte(transactions.postedAt, `${DEMO_MONTH}-01`),
-          lte(transactions.postedAt, `${DEMO_MONTH}-31`),
-          sql`${transactions.amount} < 0`,
+  const [userRows, accountRows, recentTx, budgetRows, spentRows, goalRows] =
+    await Promise.all([
+      db.select().from(users).where(eq(users.id, DEMO_USER_ID)).limit(1),
+      db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.householdId, DEMO_HOUSEHOLD_ID)),
+      db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.householdId, DEMO_HOUSEHOLD_ID))
+        .orderBy(desc(transactions.postedAt))
+        .limit(12),
+      db
+        .select()
+        .from(budgets)
+        .where(
+          and(
+            eq(budgets.householdId, DEMO_HOUSEHOLD_ID),
+            eq(budgets.month, DEMO_MONTH),
+          ),
         ),
-      );
-    const spent = Number(spentRows[0]?.total ?? 0);
+      db
+        .select({
+          category: transactions.category,
+          total: sql<string>`coalesce(abs(sum(${transactions.amount})), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.householdId, DEMO_HOUSEHOLD_ID),
+            gte(transactions.postedAt, monthStart),
+            lte(transactions.postedAt, monthEnd),
+            sql`${transactions.amount} < 0`,
+          ),
+        )
+        .groupBy(transactions.category),
+      db
+        .select()
+        .from(goals)
+        .where(eq(goals.householdId, DEMO_HOUSEHOLD_ID)),
+    ]);
+
+  const user = userRows[0];
+  const spentByCategory = new Map(
+    spentRows.map((r) => [r.category, Number(r.total)]),
+  );
+
+  const budgetStatus = budgetRows.map((b) => {
+    const spent = spentByCategory.get(b.category) ?? 0;
     const limit = Number(b.limitAmount);
-    budgetStatus.push({
+    return {
       category: b.category,
       month: DEMO_MONTH,
       limit: limit.toFixed(2),
       spent: spent.toFixed(2),
       remaining: (limit - spent).toFixed(2),
-    });
-  }
-
-  const goalRows = await db
-    .select()
-    .from(goals)
-    .where(eq(goals.householdId, DEMO_HOUSEHOLD_ID));
+    };
+  });
 
   return {
     user: user
