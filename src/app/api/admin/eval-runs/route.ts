@@ -5,34 +5,12 @@ import {
   persistCompletedRun,
 } from "@/lib/evals/job-runner";
 import { isSuiteId, type SuiteId } from "@/lib/evals/load-suites";
+import { mapPersistedRun } from "@/lib/evals/map-run";
 import { isAllowedModelId } from "@/lib/models/registry";
 import { requireAnthropicKey } from "@/lib/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-function mapRun(r: Awaited<ReturnType<typeof listPersistedRuns>>[number]) {
-  return {
-    id: r.id,
-    status: r.status,
-    suiteIds: JSON.parse(r.suiteIdsJson) as string[],
-    modelIds: JSON.parse(r.modelIdsJson) as string[],
-    totalCases: r.totalCases,
-    completedCases: r.completedCases,
-    passedCases: r.passedCases,
-    failedCases: r.failedCases,
-    errorCases: r.errorCases,
-    currentLabel: r.currentLabel,
-    summary: r.summaryJson ? JSON.parse(r.summaryJson) : null,
-    errorMessage: r.errorMessage,
-    startedAt: r.startedAt,
-    finishedAt: r.finishedAt,
-    passRate:
-      r.completedCases > 0
-        ? Number(((r.passedCases / r.completedCases) * 100).toFixed(1))
-        : null,
-  };
-}
 
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
@@ -41,9 +19,8 @@ export async function GET() {
 
   try {
     const rows = await listPersistedRuns(50);
-    return NextResponse.json({ runs: rows.map(mapRun) });
+    return NextResponse.json({ runs: rows.map(mapPersistedRun) });
   } catch {
-    // Ephemeral serverless DB may be empty / unavailable across isolates
     return NextResponse.json({ runs: [] });
   }
 }
@@ -91,7 +68,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ runId }, { status: 201 });
   } catch (err) {
-    // Still return success payload so the UI can show results from the client
     return NextResponse.json(
       {
         runId: null,

@@ -5,6 +5,9 @@ export type ModelDefinition = {
   label: string;
   provider: ModelProvider;
   description: string;
+  /** Standard list price ($/MTok). Sonnet 5 may use intro rates via pricing helper. */
+  inputPerMTok: number;
+  outputPerMTok: number;
 };
 
 /**
@@ -13,27 +16,33 @@ export type ModelDefinition = {
  */
 export const MODEL_REGISTRY: ModelDefinition[] = [
   {
-    id: "claude-sonnet-4-5-20250929",
-    label: "Claude Sonnet 4.5",
-    provider: "anthropic",
-    description: "Strong default for grounded Q&A and refusals",
-  },
-  {
     id: "claude-haiku-4-5-20251001",
     label: "Claude Haiku 4.5",
     provider: "anthropic",
-    description: "Faster / cheaper — useful for eval cost comparisons",
+    description: "Fastest / cheapest — cost and latency baseline",
+    inputPerMTok: 1,
+    outputPerMTok: 5,
   },
   {
-    id: "claude-opus-4-20250514",
-    label: "Claude Opus 4",
+    id: "claude-sonnet-5",
+    label: "Claude Sonnet 5",
     provider: "anthropic",
-    description: "Highest capability Anthropic model in this registry",
+    description: "Default balance of quality, speed, and cost",
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+  },
+  {
+    id: "claude-opus-5",
+    label: "Claude Opus 5",
+    provider: "anthropic",
+    description: "Highest quality ceiling in the current stack",
+    inputPerMTok: 5,
+    outputPerMTok: 25,
   },
 ];
 
 export const DEFAULT_MODEL_ID =
-  process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5-20250929";
+  process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
 
 export function getModelDefinition(modelId: string): ModelDefinition | undefined {
   return MODEL_REGISTRY.find((m) => m.id === modelId);

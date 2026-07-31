@@ -4,10 +4,10 @@ import { evalCaseResults, evalRuns } from "@/db/schema";
 import { gradeCase } from "@/lib/evals/graders";
 import {
   getSuitesByIds,
-  listSuites,
   type SuiteId,
 } from "@/lib/evals/load-suites";
 import type { EvalCoreResult } from "@/lib/evals/run-copilot";
+import { buildRunSummary } from "@/lib/models/pricing";
 import { isAllowedModelId } from "@/lib/models/registry";
 
 export type EvalJobItem = {
@@ -17,6 +17,24 @@ export type EvalJobItem = {
   description: string;
   prompt: string;
   modelId: string;
+};
+
+export type PersistedCaseResult = {
+  suiteId: string;
+  caseId: string;
+  description: string;
+  modelId: string;
+  prompt: string;
+  output: string | null;
+  toolsUsed: string[];
+  pass: boolean;
+  failReasons: string[];
+  latencyMs: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
+  estimatedCostUsd?: number | null;
+  errorMessage?: string | null;
 };
 
 function newId(prefix: string) {
@@ -47,39 +65,10 @@ export function buildEvalJobs(input: {
   return jobs;
 }
 
-export function getCatalogPayload() {
-  return {
-    models: undefined as undefined,
-    suites: listSuites().map((s) => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      caseCount: s.cases.length,
-      cases: s.cases.map((c) => ({
-        id: c.id,
-        description: c.description,
-        prompt: c.prompt,
-      })),
-    })),
-  };
-}
-
 export async function persistCompletedRun(input: {
   suiteIds: SuiteId[];
   modelIds: string[];
-  results: Array<{
-    suiteId: string;
-    caseId: string;
-    description: string;
-    modelId: string;
-    prompt: string;
-    output: string | null;
-    toolsUsed: string[];
-    pass: boolean;
-    failReasons: string[];
-    latencyMs: number | null;
-    errorMessage?: string | null;
-  }>;
+  results: PersistedCaseResult[];
 }): Promise<string> {
   const runId = newId("run");
   const db = await getDb();
@@ -87,16 +76,7 @@ export async function persistCompletedRun(input: {
   const failed = input.results.filter((r) => !r.pass && !r.errorMessage).length;
   const errors = input.results.filter((r) => Boolean(r.errorMessage)).length;
   const completed = input.results.length;
-  const passRate =
-    completed === 0 ? 0 : Number(((passed / completed) * 100).toFixed(1));
-
-  const perModel: Record<string, { passed: number; total: number }> = {};
-  for (const row of input.results) {
-    const bucket = perModel[row.modelId] ?? { passed: 0, total: 0 };
-    bucket.total += 1;
-    if (row.pass) bucket.passed += 1;
-    perModel[row.modelId] = bucket;
-  }
+  const summary = buildRunSummary(input.results);
 
   const now = new Date();
   await db.insert(evalRuns).values({
@@ -110,42 +90,34 @@ export async function persistCompletedRun(input: {
     failedCases: failed,
     errorCases: errors,
     currentLabel: "Completed",
-    summaryJson: JSON.stringify({
-      passRate,
-      perModel: Object.fromEntries(
-        Object.entries(perModel).map(([id, v]) => [
-          id,
-          {
-            passed: v.passed,
-            total: v.total,
-            passRate:
-              v.total === 0
-                ? 0
-                : Number(((v.passed / v.total) * 100).toFixed(1)),
-          },
-        ]),
-      ),
-    }),
+    summaryJson: JSON.stringify(summary),
     startedAt: now,
     finishedAt: now,
   });
 
-  for (const row of input.results) {
-    await db.insert(evalCaseResults).values({
-      id: newId("case"),
-      runId,
-      suiteId: row.suiteId,
-      caseId: row.caseId,
-      caseDescription: row.description,
-      modelId: row.modelId,
-      prompt: row.prompt,
-      output: row.output,
-      toolsUsedJson: JSON.stringify(row.toolsUsed),
-      pass: row.pass,
-      failReasonsJson: JSON.stringify(row.failReasons),
-      latencyMs: row.latencyMs,
-      errorMessage: row.errorMessage ?? null,
-    });
+  if (input.results.length > 0) {
+    await db.insert(evalCaseResults).values(
+      input.results.map((row) => ({
+        id: newId("case"),
+        runId,
+        suiteId: row.suiteId,
+        caseId: row.caseId,
+        caseDescription: row.description,
+        modelId: row.modelId,
+        prompt: row.prompt,
+        output: row.output,
+        toolsUsedJson: JSON.stringify(row.toolsUsed),
+        pass: row.pass,
+        failReasonsJson: JSON.stringify(row.failReasons),
+        latencyMs: row.latencyMs,
+        inputTokens: row.inputTokens ?? null,
+        outputTokens: row.outputTokens ?? null,
+        totalTokens: row.totalTokens ?? null,
+        estimatedCostUsd:
+          row.estimatedCostUsd == null ? null : String(row.estimatedCostUsd),
+        errorMessage: row.errorMessage ?? null,
+      })),
+    );
   }
 
   return runId;

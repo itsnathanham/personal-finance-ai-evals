@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  formatEstCost,
+  formatLatency,
+  formatTokens,
+} from "@/lib/evals/format-metrics";
+import type { RunSummaryMetrics } from "@/lib/models/pricing";
 
 type RunDetail = {
   run: {
@@ -16,13 +22,7 @@ type RunDetail = {
     errorCases: number;
     currentLabel: string | null;
     passRate: number | null;
-    summary: {
-      passRate: number;
-      perModel: Record<
-        string,
-        { passed: number; total: number; passRate: number }
-      >;
-    } | null;
+    summary: RunSummaryMetrics | null;
     startedAt: string;
     finishedAt: string | null;
     errorMessage: string | null;
@@ -39,6 +39,10 @@ type RunDetail = {
     pass: boolean | null;
     failReasons: string[];
     latencyMs: number | null;
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    totalTokens?: number | null;
+    estimatedCostUsd?: number | null;
     errorMessage: string | null;
   }>;
 };
@@ -65,7 +69,11 @@ export function AdminRunDetail({ runId }: { runId: string }) {
 
       const res = await fetch(`/api/admin/eval-runs/${runId}`);
       if (!res.ok) {
-        if (!cancelled) setError("Run not found (server history is ephemeral without DATABASE_URL).");
+        if (!cancelled) {
+          setError(
+            "Run not found (server history is ephemeral without DATABASE_URL).",
+          );
+        }
         return;
       }
       const json = await res.json();
@@ -104,6 +112,7 @@ export function AdminRunDetail({ runId }: { runId: string }) {
   }
 
   const { run } = data;
+  const summary = run.summary;
 
   return (
     <div className="admin-shell">
@@ -124,38 +133,57 @@ export function AdminRunDetail({ runId }: { runId: string }) {
           <strong>{run.passRate != null ? `${run.passRate}%` : "—"}</strong>
         </div>
         <div className="metric">
-          <span>Passed</span>
-          <strong>{run.passedCases}</strong>
+          <span>Est. cost</span>
+          <strong>{formatEstCost(summary?.estimatedCostUsd)}</strong>
         </div>
         <div className="metric">
-          <span>Failed</span>
-          <strong>{run.failedCases}</strong>
+          <span>Avg latency</span>
+          <strong>{formatLatency(summary?.avgLatencyMs)}</strong>
         </div>
         <div className="metric">
-          <span>Errors</span>
-          <strong>{run.errorCases}</strong>
-        </div>
-        <div className="metric">
-          <span>Progress</span>
+          <span>Tokens</span>
           <strong>
-            {run.completedCases}/{run.totalCases}
+            {formatTokens(
+              summary
+                ? summary.inputTokens + summary.outputTokens
+                : null,
+            )}
+          </strong>
+        </div>
+        <div className="metric">
+          <span>Passed / failed</span>
+          <strong>
+            {run.passedCases}/{run.failedCases}
+            {run.errorCases > 0 ? ` · ${run.errorCases} err` : ""}
           </strong>
         </div>
       </div>
 
-      {run.summary?.perModel && (
+      {summary?.perModel && (
         <section className="admin-card">
           <h2>By model</h2>
-          <ul className="model-scores">
-            {Object.entries(run.summary.perModel).map(([modelId, stats]) => (
-              <li key={modelId}>
+          <div className="model-compare">
+            <div className="model-compare-head">
+              <span>Model</span>
+              <span>Pass</span>
+              <span>Est. cost</span>
+              <span>Avg latency</span>
+              <span>Tokens</span>
+            </div>
+            {Object.entries(summary.perModel).map(([modelId, stats]) => (
+              <div key={modelId} className="model-compare-row">
                 <strong>{modelId}</strong>
                 <span>
                   {stats.passRate}% ({stats.passed}/{stats.total})
                 </span>
-              </li>
+                <span>{formatEstCost(stats.estimatedCostUsd)}</span>
+                <span>{formatLatency(stats.avgLatencyMs)}</span>
+                <span>
+                  {formatTokens(stats.inputTokens + stats.outputTokens)}
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
@@ -195,7 +223,12 @@ export function AdminRunDetail({ runId }: { runId: string }) {
                   <strong>{c.description}</strong>
                   <em>
                     {c.suiteId} · {c.modelId}
-                    {c.latencyMs != null ? ` · ${c.latencyMs}ms` : ""}
+                    {c.latencyMs != null
+                      ? ` · ${formatLatency(c.latencyMs)}`
+                      : ""}
+                    {c.estimatedCostUsd != null
+                      ? ` · ${formatEstCost(c.estimatedCostUsd)}`
+                      : ""}
                   </em>
                 </span>
               </button>
@@ -212,6 +245,13 @@ export function AdminRunDetail({ runId }: { runId: string }) {
                   <p>
                     <strong>Tools</strong>:{" "}
                     {c.toolsUsed.length ? c.toolsUsed.join(", ") : "none"}
+                  </p>
+                  <p>
+                    <strong>Usage</strong>:{" "}
+                    {formatTokens(c.inputTokens)} in /{" "}
+                    {formatTokens(c.outputTokens)} out ·{" "}
+                    {formatEstCost(c.estimatedCostUsd)} est. ·{" "}
+                    {formatLatency(c.latencyMs)}
                   </p>
                   {c.failReasons?.length > 0 && (
                     <p>

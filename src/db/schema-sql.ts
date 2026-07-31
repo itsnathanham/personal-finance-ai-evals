@@ -84,6 +84,10 @@ CREATE TABLE IF NOT EXISTS eval_case_results (
   pass boolean,
   fail_reasons_json text,
   latency_ms integer,
+  input_tokens integer,
+  output_tokens integer,
+  total_tokens integer,
+  estimated_cost_usd text,
   error_message text,
   created_at timestamptz NOT NULL DEFAULT now()
 );

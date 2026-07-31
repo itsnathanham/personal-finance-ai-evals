@@ -46,7 +46,12 @@ function slugify(description: string): string {
     .replace(/^-|-$/g, "");
 }
 
+const suiteCache = new Map<SuiteId, EvalSuite>();
+
 function loadSuiteFile(suiteId: SuiteId): EvalSuite {
+  const cached = suiteCache.get(suiteId);
+  if (cached) return cached;
+
   const meta = SUITE_META[suiteId];
   const filePath = path.join(process.cwd(), "evals", meta.file);
   const raw = fs.readFileSync(filePath, "utf8");
@@ -69,12 +74,14 @@ function loadSuiteFile(suiteId: SuiteId): EvalSuite {
     };
   });
 
-  return {
+  const suite: EvalSuite = {
     id: suiteId,
     name: meta.name,
     description: doc.description ?? meta.description,
     cases,
   };
+  suiteCache.set(suiteId, suite);
+  return suite;
 }
 
 export function listSuites(): EvalSuite[] {

@@ -32,9 +32,11 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 ## Admin eval dashboard
 
 1. Sign in with `ADMIN_PASSWORD`
-2. Select suites (**Goldens**, **Policy**, **Red team**) and one or more **Claude** models
+2. Select suites (**Goldens**, **Policy**, **Red team**) and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5)
 3. Click **Run evals** — the browser runs each case against `/api/eval` (works on Vercel serverless)
-4. When finished you’re taken to the run detail page (pass rate, per-model scores, expandable cases)
+4. When finished you’re taken to the run detail page with **pass rate**, **estimated cost**, **avg latency**, and per-model breakdown
+
+Costs are **list-price estimates** from Anthropic token usage (Sonnet 5 uses intro rates through Aug 31, 2026). Cache/batch discounts are not applied.
 
 History is kept in this browser session (and best-effort on the server). For durable server-side history across refreshes/devices, set a Neon `DATABASE_URL` on Vercel.
 

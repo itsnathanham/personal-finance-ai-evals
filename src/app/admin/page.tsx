@@ -1,6 +1,10 @@
 import { AdminDashboard } from "@/components/admin-dashboard";
 import { AdminLoginForm } from "@/components/admin-login-form";
 import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
+import { listPersistedRuns } from "@/lib/evals/job-runner";
+import { listSuites } from "@/lib/evals/load-suites";
+import { mapPersistedRun } from "@/lib/evals/map-run";
+import { MODEL_REGISTRY } from "@/lib/models/registry";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +24,35 @@ export default async function AdminPage() {
   }
 
   const authed = await isAdminAuthenticated();
-  return authed ? <AdminDashboard /> : <AdminLoginForm />;
+  if (!authed) return <AdminLoginForm />;
+
+  const catalog = {
+    models: MODEL_REGISTRY.map((m) => ({
+      id: m.id,
+      label: m.label,
+      description: m.description,
+    })),
+    suites: listSuites().map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      caseCount: s.cases.length,
+      cases: s.cases.map((c) => ({
+        id: c.id,
+        description: c.description,
+        prompt: c.prompt,
+      })),
+    })),
+  };
+
+  let initialRuns: ReturnType<typeof mapPersistedRun>[] = [];
+  try {
+    initialRuns = (await listPersistedRuns(50)).map(mapPersistedRun);
+  } catch {
+    initialRuns = [];
+  }
+
+  return (
+    <AdminDashboard initialCatalog={catalog} initialRuns={initialRuns} />
+  );
 }

@@ -61,6 +61,11 @@ export async function GET(
         pass: c.pass,
         failReasons: c.failReasonsJson ? JSON.parse(c.failReasonsJson) : [],
         latencyMs: c.latencyMs,
+        inputTokens: c.inputTokens,
+        outputTokens: c.outputTokens,
+        totalTokens: c.totalTokens,
+        estimatedCostUsd:
+          c.estimatedCostUsd == null ? null : Number(c.estimatedCostUsd),
         errorMessage: c.errorMessage,
         createdAt: c.createdAt,
       })),

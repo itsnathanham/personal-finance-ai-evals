@@ -4,6 +4,7 @@ import { getModel } from "@/lib/model";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { DEMO_HOUSEHOLD_ID } from "@/db/seed-data";
 import { resolveModelId } from "@/lib/models/registry";
+import { estimateCostUsd, roundCostUsd } from "@/lib/models/pricing";
 
 export type EvalCoreResult = {
   output: string;
@@ -13,7 +14,28 @@ export type EvalCoreResult = {
   modelId: string;
   refused?: boolean;
   latencyMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  estimatedCostUsd: number | null;
 };
+
+function refuseResult(modelId: string, latencyMs: number): EvalCoreResult {
+  return {
+    output:
+      "I can only access The Jetski Household in this demo. I will not retrieve another household's data.",
+    toolsUsed: [],
+    toolResults: [],
+    finishReason: "stop",
+    modelId,
+    refused: true,
+    latencyMs,
+    inputTokens: null,
+    outputTokens: null,
+    totalTokens: null,
+    estimatedCostUsd: null,
+  };
+}
 
 export async function runCopilotEval(options: {
   prompt: string;
@@ -25,16 +47,7 @@ export async function runCopilotEval(options: {
   const started = Date.now();
 
   if (householdId !== DEMO_HOUSEHOLD_ID) {
-    return {
-      output:
-        "I can only access The Jetski Household in this demo. I will not retrieve another household's data.",
-      toolsUsed: [],
-      toolResults: [],
-      finishReason: "stop",
-      modelId,
-      refused: true,
-      latencyMs: Date.now() - started,
-    };
+    return refuseResult(modelId, Date.now() - started);
   }
 
   const tools = createFinanceTools(householdId) as ToolSet;
@@ -61,6 +74,16 @@ export async function runCopilotEval(options: {
     },
   });
 
+  const usage = result.totalUsage ?? result.usage;
+  const inputTokens = usage?.inputTokens ?? null;
+  const outputTokens = usage?.outputTokens ?? null;
+  const totalTokens =
+    usage?.totalTokens ??
+    (inputTokens != null || outputTokens != null
+      ? (inputTokens ?? 0) + (outputTokens ?? 0)
+      : null);
+  const cost = estimateCostUsd(modelId, { inputTokens, outputTokens });
+
   return {
     output: result.text,
     toolsUsed,
@@ -68,5 +91,9 @@ export async function runCopilotEval(options: {
     finishReason: result.finishReason,
     modelId,
     latencyMs: Date.now() - started,
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    estimatedCostUsd: cost == null ? null : roundCostUsd(cost),
   };
 }
