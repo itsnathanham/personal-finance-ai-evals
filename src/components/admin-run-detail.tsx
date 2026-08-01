@@ -124,7 +124,10 @@ export function AdminRunDetail({ runId }: { runId: string }) {
             model{run.modelIds.length === 1 ? "" : "s"}
           </p>
         </div>
-        <Link href="/admin">Back to admin</Link>
+        <div className="admin-top-actions">
+          <Link href="/admin/trends">Trends</Link>
+          <Link href="/admin">Back to admin</Link>
+        </div>
       </header>
 
       <div className="metric-row">

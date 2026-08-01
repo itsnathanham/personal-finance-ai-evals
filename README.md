@@ -26,6 +26,7 @@ npm run dev
 
 - Copilot: [http://localhost:3000](http://localhost:3000)
 - Eval admin: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Eval trends: [http://localhost:3000/admin/trends](http://localhost:3000/admin/trends)
 
 If the terminal says port 3000 is busy, use the port it prints and open `/admin` there.
 
@@ -35,10 +36,11 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 2. Select suites (**Goldens**, **Policy**, **Red team**) and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5)
 3. Click **Run evals** — the browser runs each case against `/api/eval` (works on Vercel serverless)
 4. When finished you’re taken to the run detail page with **pass rate**, **estimated cost**, **avg latency**, and per-model breakdown
+5. Open **Trends** (`/admin/trends`) to filter by model + suite and chart pass/fail/cost/latency over time
 
 Costs are **list-price estimates** from Anthropic token usage (Sonnet 5 uses intro rates through Aug 31, 2026). Cache/batch discounts are not applied.
 
-History is kept in this browser session (and best-effort on the server). For durable server-side history across refreshes/devices, set a Neon `DATABASE_URL` on Vercel.
+Run history for trends is kept in **browser localStorage** (merged with best-effort server runs). For durable server-side history across devices, set a Neon `DATABASE_URL` on Vercel.
 
 `http://localhost:15500` is **Promptfoo’s own viewer** (`npm run eval:view`) — optional power-user tool, separate from `/admin`.
 
