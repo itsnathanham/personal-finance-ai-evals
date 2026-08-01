@@ -8,9 +8,12 @@ import {
   formatLatency,
 } from "@/lib/evals/format-metrics";
 import {
-  buildRunSummary,
-  type RunSummaryMetrics,
-} from "@/lib/models/pricing";
+  mergeRunSummaries,
+  upsertEvalHistoryEntry,
+  type HistoryCaseResult,
+  type HistoryRunSummary,
+} from "@/lib/evals/history";
+import { buildRunSummary } from "@/lib/models/pricing";
 
 type CatalogCase = {
   id: string;
@@ -29,71 +32,8 @@ export type Catalog = {
   }>;
 };
 
-type RunSummary = {
-  id: string;
-  status: string;
-  suiteIds: string[];
-  modelIds: string[];
-  totalCases: number;
-  completedCases: number;
-  passedCases: number;
-  failedCases: number;
-  errorCases: number;
-  currentLabel: string | null;
-  passRate: number | null;
-  startedAt: string;
-  finishedAt: string | null;
-  errorMessage: string | null;
-  summary?: RunSummaryMetrics | null;
-};
-
-type CaseResult = {
-  id: string;
-  suiteId: string;
-  caseId: string;
-  description: string;
-  modelId: string;
-  prompt: string;
-  output: string | null;
-  toolsUsed: string[];
-  pass: boolean;
-  failReasons: string[];
-  latencyMs: number | null;
-  inputTokens: number | null;
-  outputTokens: number | null;
-  totalTokens: number | null;
-  estimatedCostUsd: number | null;
-  errorMessage: string | null;
-};
-
-const LOCAL_HISTORY_KEY = "hfc_eval_history_v1";
-
-function loadLocalHistory(): Array<{ run: RunSummary; cases: CaseResult[] }> {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = sessionStorage.getItem(LOCAL_HISTORY_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Array<{ run: RunSummary; cases: CaseResult[] }>;
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalHistory(
-  entries: Array<{ run: RunSummary; cases: CaseResult[] }>,
-) {
-  sessionStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(entries.slice(0, 20)));
-}
-
-function mergeRuns(serverRuns: RunSummary[]): RunSummary[] {
-  const local = loadLocalHistory().map((e) => e.run);
-  const byId = new Map<string, RunSummary>();
-  for (const r of [...local, ...serverRuns]) byId.set(r.id, r);
-  return [...byId.values()].sort(
-    (a, b) =>
-      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  );
-}
+type RunSummary = HistoryRunSummary;
+type CaseResult = HistoryCaseResult;
 
 export function AdminDashboard({
   initialCatalog,
@@ -104,7 +44,9 @@ export function AdminDashboard({
 }) {
   const router = useRouter();
   const [catalog] = useState(initialCatalog);
-  const [runs, setRuns] = useState<RunSummary[]>(() => mergeRuns(initialRuns));
+  const [runs, setRuns] = useState<RunSummary[]>(() =>
+    mergeRunSummaries(initialRuns),
+  );
   const [suiteIds, setSuiteIds] = useState<string[]>(["goldens"]);
   const [modelIds, setModelIds] = useState<string[]>(() =>
     initialCatalog.models[0] ? [initialCatalog.models[0].id] : [],
@@ -126,11 +68,11 @@ export function AdminDashboard({
       return;
     }
     const runsJson = await runsRes.json();
-    setRuns(mergeRuns((runsJson.runs ?? []) as RunSummary[]));
+    setRuns(mergeRunSummaries((runsJson.runs ?? []) as RunSummary[]));
   }, [router]);
 
   useEffect(() => {
-    setRuns(mergeRuns(initialRuns));
+    setRuns(mergeRunSummaries(initialRuns));
   }, [initialRuns]);
 
   function toggle(list: string[], id: string, setter: (v: string[]) => void) {
@@ -325,13 +267,7 @@ export function AdminDashboard({
         summary,
       };
 
-      const history = loadLocalHistory();
-      history.unshift({ run, cases: results });
-      saveLocalHistory(history);
-      sessionStorage.setItem(
-        `hfc_eval_run_${runId}`,
-        JSON.stringify({ run, cases: results }),
-      );
+      upsertEvalHistoryEntry({ run, cases: results });
 
       if (persistJson.warning) {
         setError(persistJson.warning);
@@ -368,6 +304,7 @@ export function AdminDashboard({
           </p>
         </div>
         <div className="admin-top-actions">
+          <Link href="/admin/trends">Trends</Link>
           <Link href="/">Back to copilot</Link>
           <button type="button" className="ghost" onClick={() => void logout()}>
             Log out
