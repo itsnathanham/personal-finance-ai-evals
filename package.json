@@ -1,5 +1,5 @@
 {
-  "name": "household-finance-copilot",
+  "name": "personal-finance-ai-evals",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,6 +12,8 @@
     "eval:goldens": "promptfoo eval -c evals/goldens.yaml",
     "eval:policy": "promptfoo eval -c evals/policy.yaml",
     "eval:redteam": "promptfoo eval -c evals/redteam.yaml",
+    "eval:finance": "promptfoo eval -c evals/finance.yaml",
+    "eval:finance:plugins": "promptfoo redteam run -c evals/promptfoo-finance-redteam.yaml",
     "eval:view": "promptfoo view"
   },
   "dependencies": {

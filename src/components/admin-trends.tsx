@@ -195,7 +195,7 @@ export function AdminTrends({
         </div>
         <div className="admin-top-actions">
           <Link href="/admin">Run evals</Link>
-          <Link href="/">Back to copilot</Link>
+          <Link href="/">Back to app</Link>
           <button type="button" className="ghost" onClick={() => void logout()}>
             Log out
           </button>
@@ -229,12 +229,13 @@ export function AdminTrends({
 
         <h3>Suite</h3>
         <div className="filter-pills">
-          {(
+            {(
             [
               ["all", "All"],
               ["goldens", "Goldens"],
               ["policy", "Policy"],
               ["redteam", "Red team"],
+              ["finance", "Promptfoo Finance"],
             ] as const
           ).map(([id, label]) => (
             <button

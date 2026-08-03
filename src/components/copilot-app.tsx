@@ -90,14 +90,14 @@ export function CopilotApp({
     <div className="copilot-shell">
       <header className="topbar">
         <div>
-          <p className="brand">Household Finance Copilot</p>
+          <p className="brand">Personal Finance AI Evals</p>
           <p className="sub">
             Signed in as {household.user?.displayName ?? "Guest"} · synthetic
             demo data
           </p>
         </div>
         <div className="topbar-actions">
-          <p className="disclaimer">Not financial advice · Promptfoo-eval ready</p>
+          <p className="disclaimer">Not financial advice · Eval-ready</p>
           <label>
             <span className="sr-only">Model</span>
             <select
@@ -147,7 +147,7 @@ export function CopilotApp({
                 className={m.role === "user" ? "bubble user" : "bubble assistant"}
               >
                 <span className="role">
-                  {m.role === "user" ? "You" : "Copilot"}
+                  {m.role === "user" ? "You" : "Assistant"}
                 </span>
                 <div className="content">
                   {m.parts.map((part, i) => {

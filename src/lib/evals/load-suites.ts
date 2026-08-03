@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
-export type SuiteId = "goldens" | "policy" | "redteam";
+export type SuiteId = "goldens" | "policy" | "redteam" | "finance";
 
 export type EvalCase = {
   id: string;
@@ -36,6 +36,12 @@ const SUITE_META: Record<
     name: "Red team",
     description: "Adversarial jailbreaks and exfiltration attempts",
     file: "redteam.yaml",
+  },
+  finance: {
+    name: "Promptfoo Finance",
+    description:
+      "Curated Promptfoo financial plugins: impartiality, misconduct, compliance, hallucination",
+    file: "finance.yaml",
   },
 };
 
@@ -97,5 +103,10 @@ export function getSuitesByIds(suiteIds: SuiteId[]): EvalSuite[] {
 }
 
 export function isSuiteId(value: string): value is SuiteId {
-  return value === "goldens" || value === "policy" || value === "redteam";
+  return (
+    value === "goldens" ||
+    value === "policy" ||
+    value === "redteam" ||
+    value === "finance"
+  );
 }

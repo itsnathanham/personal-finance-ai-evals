@@ -300,12 +300,13 @@ export function AdminDashboard({
         <div>
           <p className="brand">Eval Admin</p>
           <p className="sub">
-            Run goldens, policy, and red-team suites across Claude models
+            Run goldens, policy, red-team, or Promptfoo Finance suites across
+            Claude models
           </p>
         </div>
         <div className="admin-top-actions">
           <Link href="/admin/trends">Trends</Link>
-          <Link href="/">Back to copilot</Link>
+          <Link href="/">Back to app</Link>
           <button type="button" className="ghost" onClick={() => void logout()}>
             Log out
           </button>
@@ -316,8 +317,8 @@ export function AdminDashboard({
         <section className="admin-card">
           <h2>New run</h2>
           <p className="admin-help">
-            Pick suites and one or more models. Compare pass rate, est. cost,
-            and avg latency across models.
+            Mix Goldens, Policy, Red team, and Promptfoo Finance in one run.
+            Compare pass rate, est. cost, and avg latency across models.
           </p>
 
           <h3>Suites</h3>

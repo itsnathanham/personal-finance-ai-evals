@@ -13,9 +13,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Household Finance Copilot",
+  title: "Personal Finance AI Evals",
   description:
-    "Grounded household finance assistant over seeded ledger data — built to practice Promptfoo evals.",
+    "Grounded personal finance assistant over seeded ledger data — built to practice AI evals.",
 };
 
 export default function RootLayout({

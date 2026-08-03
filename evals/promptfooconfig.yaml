@@ -2,7 +2,7 @@
 # Canonical split suites live in goldens.yaml, policy.yaml, and redteam.yaml
 # (also loaded by the /admin in-app runner).
 
-description: Household Finance Copilot goldens + policy (CLI convenience)
+description: Personal Finance AI Evals goldens + policy (CLI convenience)
 
 prompts:
   - "{{prompt}}"

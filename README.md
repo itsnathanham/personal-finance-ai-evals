@@ -1,6 +1,6 @@
-# Household Finance Copilot
+# Personal Finance AI Evals
 
-Grounded household finance assistant over **seeded ledger data** for **Duane Jetski / The Jetski Household**. Built to practice eval workflows with an **in-app admin dashboard** (plus optional Promptfoo CLI).
+Grounded personal finance assistant over **seeded ledger data** for **Duane Jetski / The Jetski Household**. Built to practice AI eval workflows with an **in-app admin dashboard** (plus optional Promptfoo CLI).
 
 > Synthetic demo data only. Not financial advice. Not a bank.
 
@@ -24,7 +24,7 @@ npm run db:seed
 npm run dev
 ```
 
-- Copilot: [http://localhost:3000](http://localhost:3000)
+- App: [http://localhost:3000](http://localhost:3000)
 - Eval admin: [http://localhost:3000/admin](http://localhost:3000/admin)
 - Eval trends: [http://localhost:3000/admin/trends](http://localhost:3000/admin/trends)
 
@@ -33,7 +33,11 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 ## Admin eval dashboard
 
 1. Sign in with `ADMIN_PASSWORD`
-2. Select suites (**Goldens**, **Policy**, **Red team**) and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5)
+2. Select any mix of suites and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5):
+   - **Goldens** — ledger accuracy
+   - **Policy** — product-boundary refusals
+   - **Red team** — jailbreaks / exfil probes
+   - **Promptfoo Finance** — curated Promptfoo financial plugins (`impartiality`, `misconduct`, `compliance-violation`, `hallucination`)
 3. Click **Run evals** — the browser runs each case against `/api/eval` (works on Vercel serverless)
 4. When finished you’re taken to the run detail page with **pass rate**, **estimated cost**, **avg latency**, and per-model breakdown
 5. Open **Trends** (`/admin/trends`) to filter by model + suite and chart pass/fail/cost/latency over time
@@ -55,13 +59,15 @@ Run history for trends is kept in **browser localStorage** (merged with best-eff
 
 ## CLI evals (optional)
 
-With the app running:
+With the app running (adjust port if needed; YAML defaults to `localhost:3003`):
 
 ```bash
 npm run eval:goldens
 npm run eval:policy
 npm run eval:redteam
-npm run eval:view   # Promptfoo UI on :15500
+npm run eval:finance          # frozen Promptfoo Finance cases (same as admin suite)
+npm run eval:finance:plugins  # live Promptfoo redteam with curated financial:* plugins
+npm run eval:view             # Promptfoo UI on :15500
 ```
 
 ## Deploy notes
@@ -76,5 +82,5 @@ src/app/api/admin      login + eval run APIs
 src/app/api/eval       single-case eval endpoint
 src/lib/evals          suites, graders, job runner
 src/lib/models         Claude model registry
-evals/                 YAML suites (goldens / policy / redteam)
+evals/                 YAML suites (goldens / policy / redteam / finance)
 ```

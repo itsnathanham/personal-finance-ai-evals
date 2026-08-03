@@ -11,7 +11,7 @@ export type ModelDefinition = {
 };
 
 /**
- * Curated Claude models for the copilot + admin eval dashboard.
+ * Curated Claude models for the app + admin eval dashboard.
  * Provider-pluggable later; Anthropic-only for now.
  */
 export const MODEL_REGISTRY: ModelDefinition[] = [

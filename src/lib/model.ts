@@ -27,7 +27,7 @@ export function getModel(modelId?: string | null) {
 
 export function requireAnthropicKey(): string | null {
   if (!sanitizeAnthropicApiKey(process.env.ANTHROPIC_API_KEY)) {
-    return "ANTHROPIC_API_KEY is not configured. Add it to .env.local to use the copilot.";
+    return "ANTHROPIC_API_KEY is not configured. Add it to .env.local to use the app.";
   }
   return null;
 }
