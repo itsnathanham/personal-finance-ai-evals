@@ -221,6 +221,53 @@ body {
   line-height: 1.5;
 }
 
+.content .md {
+  line-height: 1.5;
+}
+
+.content .md > :first-child {
+  margin-top: 0;
+}
+
+.content .md > :last-child {
+  margin-bottom: 0;
+}
+
+.content .md p {
+  margin: 0.45rem 0;
+  white-space: normal;
+}
+
+.content .md strong {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.content .md em {
+  font-style: italic;
+}
+
+.content .md ul,
+.content .md ol {
+  margin: 0.45rem 0;
+  padding-left: 1.25rem;
+}
+
+.content .md li {
+  margin: 0.25rem 0;
+}
+
+.content .md li p {
+  margin: 0.15rem 0;
+}
+
+.content .md code {
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.28);
+}
+
 .tool-chip {
   font-size: 0.8rem;
   color: var(--accent-2);

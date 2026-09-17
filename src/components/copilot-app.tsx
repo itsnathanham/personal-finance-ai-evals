@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { FormEvent, useMemo, useState, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
 
 function formatMoney(value: string) {
   const n = Number(value);
@@ -154,6 +155,13 @@ export function CopilotApp({
                 <div className="content">
                   {m.parts.map((part, i) => {
                     if (part.type === "text") {
+                      if (m.role === "assistant") {
+                        return (
+                          <div key={`${m.id}-${i}`} className="md">
+                            <ReactMarkdown>{part.text}</ReactMarkdown>
+                          </div>
+                        );
+                      }
                       return <p key={`${m.id}-${i}`}>{part.text}</p>;
                     }
                     if (part.type.startsWith("tool-")) {
