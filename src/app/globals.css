@@ -3,7 +3,6 @@
 :root {
   --bg0: #0f1f1c;
   --bg1: #17302b;
-  --bg2: #1f3d36;
   --ink: #e8f2ee;
   --muted: #9bb5ac;
   --accent: #d6a45b;
@@ -43,8 +42,9 @@ body {
   min-height: 100dvh;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* Single page wash — no stacked section gradients */
+  /* Soft page wash only — surfaces stay transparent so it reads continuous */
   background: linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%);
+  background-attachment: fixed;
 }
 
 .copilot-shell {
@@ -52,6 +52,7 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 .topbar {
@@ -101,33 +102,27 @@ body {
 
 .topbar-actions {
   display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 0.55rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
   flex-shrink: 0;
 }
 
 .model-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  align-items: stretch;
+  display: block;
   min-width: 12rem;
 }
 
-.model-field-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
+.model-select {
+  width: 100%;
+  min-width: 12rem;
 }
 
 .admin-link {
   color: var(--accent-2);
   text-decoration: none;
   font-size: 0.85rem;
-  align-self: end;
+  white-space: nowrap;
 }
 
 .admin-link:hover {
@@ -140,25 +135,35 @@ body {
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   gap: 0;
   min-height: 0;
+  /* Stretch columns so the chat/rail divider runs the full content height */
+  align-items: stretch;
 }
 
 .chat-panel {
   display: flex;
   flex-direction: column;
+  width: 100%;
   border-right: 1px solid var(--stroke);
-  min-height: calc(100vh - 5rem);
-  min-height: calc(100dvh - 5rem);
+  min-height: 100%;
   background: transparent;
+  /* Content-sized messages keep the composer under the thread;
+     column stretch only extends the border beside the rail. */
+  overflow: visible;
 }
 
 .messages {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.messages.is-empty {
+  flex: 0 0 auto;
+  padding-bottom: 0.75rem;
 }
 
 .empty h1 {
@@ -167,7 +172,6 @@ body {
   font-weight: 500;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   line-height: 1.15;
-  max-width: 18ch;
 }
 
 .empty p {
@@ -296,7 +300,7 @@ body {
   align-items: stretch;
   padding: 1rem 1.5rem 1.35rem;
   border-top: 1px solid var(--stroke);
-  background: var(--bg1);
+  background: transparent;
   flex-shrink: 0;
 }
 
@@ -337,8 +341,7 @@ body {
 .rail {
   overflow: auto;
   padding: 1rem 1.1rem 2rem;
-  /* One solid panel below chat — no extra gradient layers */
-  background: var(--bg2);
+  background: transparent;
 }
 
 .rail-block {
@@ -423,7 +426,8 @@ body {
     gap: 1rem;
     padding: 1rem 1rem 1rem;
     padding-right: max(1rem, 3.25rem);
-    background: var(--bg0);
+    background: transparent;
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--stroke);
   }
 
@@ -436,7 +440,7 @@ body {
   }
 
   .topbar-actions {
-    align-items: stretch;
+    align-items: center;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 0.65rem 0.85rem;
@@ -448,35 +452,36 @@ body {
   }
 
   .admin-link {
-    align-self: end;
-    padding-bottom: 0.85rem;
+    flex: 0 0 auto;
   }
 
-  /* Fixed chat viewport: messages scroll, composer stays put */
+  /* Chat grows with content; caps to viewport so long threads scroll */
   .chat-panel {
     border-right: none;
     display: flex;
     flex-direction: column;
-    height: 70dvh;
-    max-height: 70dvh;
-    min-height: 22rem;
-    overflow: hidden;
-    background: var(--bg0);
+    width: 100%;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    background: transparent;
   }
 
   .messages {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
     padding: 1.15rem 1rem 1rem;
     padding-right: max(1rem, 3.25rem);
   }
 
+  .messages.is-empty {
+    flex: 0 0 auto;
+    padding-bottom: 0.5rem;
+  }
+
   .empty h1 {
     font-size: clamp(1.55rem, 7vw, 2rem);
-    max-width: 14ch;
     margin-bottom: 0.65rem;
   }
 
@@ -502,7 +507,8 @@ body {
     align-items: stretch;
     padding: 0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom, 0px));
     gap: 0.5rem;
-    background: var(--bg1);
+    background: transparent;
+    backdrop-filter: blur(10px);
     border-top: 1px solid var(--stroke);
   }
 
@@ -520,7 +526,7 @@ body {
     overflow: visible;
     padding: 1.35rem 1rem 2.5rem;
     padding-right: max(1rem, 3.25rem);
-    background: var(--bg2);
+    background: transparent;
     border-top: 1px solid var(--stroke);
   }
 
@@ -546,6 +552,7 @@ body {
 .admin-shell {
   min-height: 100vh;
   padding: 1.25rem 1.5rem 2.5rem;
+  background: transparent;
 }
 
 .admin-top {
@@ -688,28 +695,40 @@ body {
   opacity: 0.7;
 }
 
-.admin-login {
-  max-width: 26rem;
-  margin: 4rem auto;
-  padding: 1.5rem;
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(8, 16, 14, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.admin-modal {
+  width: min(100%, 24rem);
+  padding: 1.35rem 1.4rem 1.25rem;
   border: 1px solid var(--stroke);
   border-radius: 1rem;
-  background: var(--panel);
+  background: #142824;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
-.admin-login h1 {
-  margin-top: 0;
+.admin-modal h2 {
+  margin: 0 0 0.4rem;
   font-family: var(--font-display), Georgia, serif;
+  font-size: 1.25rem;
 }
 
-.admin-login form,
-.admin-login input {
+.admin-modal form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
 }
 
-.admin-login input,
+.admin-modal input,
 .model-select {
   border-radius: 0.75rem;
   border: 1px solid var(--stroke);
@@ -719,7 +738,12 @@ body {
   font: inherit;
 }
 
-.admin-login button,
+.admin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 button.primary,
 button.ghost,
 .filter-pills button {
@@ -737,6 +761,9 @@ button.primary {
   color: #1a1408;
   border: none;
   font-weight: 600;
+}
+
+.admin-card > button.primary {
   margin-top: 0.75rem;
 }
 
@@ -745,8 +772,18 @@ button.primary:disabled {
   cursor: not-allowed;
 }
 
+button.primary.danger {
+  background: var(--danger);
+  color: #1a0c0a;
+}
+
 button.ghost {
   background: transparent;
+}
+
+button.ghost.danger-text {
+  color: var(--danger);
+  border-color: rgba(224, 122, 106, 0.35);
 }
 
 .admin-error {
@@ -804,6 +841,24 @@ button.ghost {
   letter-spacing: 0.05em;
   padding: 0 0.25rem 0.35rem;
   border-bottom: 1px solid var(--stroke);
+}
+
+.model-compare-head.sortable button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-compare-head.sortable button:hover {
+  color: var(--ink);
 }
 
 .model-compare-row {

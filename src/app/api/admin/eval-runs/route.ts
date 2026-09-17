@@ -12,10 +12,6 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET() {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const rows = await listPersistedRuns(50);
     return NextResponse.json({ runs: rows.map(mapPersistedRun) });

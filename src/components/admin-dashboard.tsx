@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AdminAuthModal,
+  checkAdminSession,
+} from "@/components/admin-auth-modal";
 import {
   formatEstCost,
   formatLatency,
@@ -41,6 +45,20 @@ export type Catalog = {
 type RunSummary = HistoryRunSummary;
 type CaseResult = HistoryCaseResult;
 
+const CASE_GAP_MS = 500;
+const PROVIDER_SWITCH_GAP_MS = 900;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function providerOf(modelId: string): string {
+  if (modelId.startsWith("claude")) return "anthropic";
+  if (modelId.startsWith("gpt") || modelId.startsWith("o")) return "openai";
+  if (modelId.startsWith("gemini")) return "google";
+  return "other";
+}
+
 export function AdminDashboard({
   initialCatalog,
   initialRuns = [],
@@ -67,16 +85,15 @@ export function AdminDashboard({
     failed: 0,
     label: "",
   });
+  const [authOpen, setAuthOpen] = useState(false);
+  const pendingActionRef = useRef<null | (() => void)>(null);
 
   const refreshRuns = useCallback(async () => {
     const runsRes = await fetch("/api/admin/eval-runs");
-    if (runsRes.status === 401) {
-      router.refresh();
-      return;
-    }
+    if (!runsRes.ok) return;
     const runsJson = await runsRes.json();
     setRuns(mergeRunSummaries((runsJson.runs ?? []) as RunSummary[]));
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     setRuns(mergeRunSummaries(initialRuns));
@@ -93,6 +110,22 @@ export function AdminDashboard({
         .reduce((n, s) => n + s.caseCount, 0) * modelIds.length,
     [catalog, suiteIds, modelIds],
   );
+
+  async function requireAuthThen(action: () => void) {
+    if (await checkAdminSession()) {
+      action();
+      return;
+    }
+    pendingActionRef.current = action;
+    setAuthOpen(true);
+  }
+
+  function onAuthSuccess() {
+    setAuthOpen(false);
+    const action = pendingActionRef.current;
+    pendingActionRef.current = null;
+    action?.();
+  }
 
   async function startRun() {
     setRunning(true);
@@ -139,6 +172,15 @@ export function AdminDashboard({
     try {
       for (let i = 0; i < jobs.length; i++) {
         const job = jobs[i]!;
+        const prev = jobs[i - 1];
+        if (prev) {
+          const gap =
+            providerOf(prev.modelId) === providerOf(job.modelId)
+              ? CASE_GAP_MS
+              : PROVIDER_SWITCH_GAP_MS;
+          await sleep(gap);
+        }
+
         setProgress({
           completed: i,
           total: jobs.length,
@@ -167,6 +209,9 @@ export function AdminDashboard({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ caseId: job.caseId, result: evalJson }),
           });
+          if (gradeRes.status === 401) {
+            throw new Error("Unauthorized — sign in to grade eval results");
+          }
           const gradeJson = await gradeRes.json();
           const pass = Boolean(gradeJson.pass);
           if (pass) passed += 1;
@@ -251,6 +296,9 @@ export function AdminDashboard({
         }),
       });
       const persistJson = await persistRes.json();
+      if (persistRes.status === 401) {
+        throw new Error("Unauthorized — sign in to save eval runs");
+      }
       const runId =
         typeof persistJson.runId === "string" && persistJson.runId.length > 0
           ? persistJson.runId
@@ -296,11 +344,6 @@ export function AdminDashboard({
     }
   }
 
-  async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.refresh();
-  }
-
   return (
     <div className="admin-shell">
       <header className="admin-top">
@@ -312,11 +355,8 @@ export function AdminDashboard({
           </p>
         </div>
         <div className="admin-top-actions">
-          <Link href="/admin/trends">Trends</Link>
-          <Link href="/">Back to app</Link>
-          <button type="button" className="ghost" onClick={() => void logout()}>
-            Log out
-          </button>
+          <Link href="/admin/trends">Eval trends</Link>
+          <Link href="/">Copilot</Link>
         </div>
       </header>
 
@@ -326,6 +366,7 @@ export function AdminDashboard({
           <p className="admin-help">
             Mix Goldens, Policy, Red team, and Promptfoo Finance in one run.
             Compare pass rate, est. cost, and avg latency across models.
+            Running evals requires the admin password.
           </p>
 
           <h3>Suites</h3>
@@ -427,7 +468,7 @@ export function AdminDashboard({
             disabled={
               running || suiteIds.length === 0 || modelIds.length === 0
             }
-            onClick={() => void startRun()}
+            onClick={() => void requireAuthThen(() => void startRun())}
           >
             {running ? "Running evals…" : "Run evals"}
           </button>
@@ -482,6 +523,17 @@ export function AdminDashboard({
           )}
         </section>
       </div>
+
+      <AdminAuthModal
+        open={authOpen}
+        title="Sign in to run evals"
+        description="Admin password is required to execute eval runs."
+        onClose={() => {
+          setAuthOpen(false);
+          pendingActionRef.current = null;
+        }}
+        onSuccess={onAuthSuccess}
+      />
     </div>
   );
 }

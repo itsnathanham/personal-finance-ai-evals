@@ -1,4 +1,5 @@
 import { runCopilotEval } from "@/lib/evals/run-copilot";
+import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
 import { requireKeyForModel } from "@/lib/model";
 import { isAllowedModelId } from "@/lib/models/registry";
 import { DEMO_HOUSEHOLD_ID } from "@/db/seed-data";
@@ -9,9 +10,17 @@ export const maxDuration = 60;
 
 /**
  * Non-streaming endpoint for Promptfoo / CI / admin evals.
+ * When ADMIN_PASSWORD is set (production), requires an admin session so
+ * anonymous visitors cannot burn provider tokens. CI leaves ADMIN_PASSWORD
+ * unset and remains open on localhost.
  */
 export async function POST(req: Request) {
-  const rl = rateLimit(`eval:${clientKey(req)}`, 100);
+  if (isAdminConfigured() && !(await isAdminAuthenticated())) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const evalLimit = Number(process.env.EVAL_RATE_LIMIT_PER_HOUR ?? 2000);
+  const rl = rateLimit(`eval:${clientKey(req)}`, evalLimit);
   if (!rl.ok) {
     return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
   }

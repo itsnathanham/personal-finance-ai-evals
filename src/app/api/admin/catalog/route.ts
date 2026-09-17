@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { listSuites } from "@/lib/evals/load-suites";
 import { catalogModels } from "@/lib/models/catalog";
 
+/** Public catalog for browsing the evals UI without signing in. */
 export async function GET() {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   return NextResponse.json({
     models: catalogModels(),
     suites: listSuites().map((s) => ({

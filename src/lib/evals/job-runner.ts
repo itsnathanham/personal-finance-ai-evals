@@ -143,6 +143,19 @@ export async function getPersistedRun(id: string) {
   return { run, cases };
 }
 
+export async function deletePersistedRun(id: string): Promise<boolean> {
+  const db = await getDb();
+  const [run] = await db
+    .select({ id: evalRuns.id })
+    .from(evalRuns)
+    .where(eq(evalRuns.id, id))
+    .limit(1);
+  if (!run) return false;
+  await db.delete(evalCaseResults).where(eq(evalCaseResults.runId, id));
+  await db.delete(evalRuns).where(eq(evalRuns.id, id));
+  return true;
+}
+
 export function gradeEvalResult(caseId: string, result: EvalCoreResult) {
   return gradeCase({ caseId, result });
 }
