@@ -350,7 +350,7 @@ export function AdminDashboard({
 
           <h3>Models</h3>
           <p className="admin-help">
-            Models without a configured API key are disabled. Add{" "}
+            Only providers with an API key are selectable. Add{" "}
             <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, and/or{" "}
             <code>GOOGLE_GENERATIVE_AI_API_KEY</code> in{" "}
             <code>.env.local</code> / Vercel env (never commit secrets).
@@ -358,42 +358,67 @@ export function AdminDashboard({
           {(["anthropic", "openai", "google"] as const).map((provider) => {
             const models = catalog.models.filter((m) => m.provider === provider);
             if (models.length === 0) return null;
+            const configured = models.filter((m) => m.configured);
+            const missing = models.filter((m) => !m.configured);
             const title =
               provider === "anthropic"
                 ? "Anthropic"
                 : provider === "openai"
                   ? "OpenAI"
                   : "Google Gemini";
+            const envHint =
+              provider === "anthropic"
+                ? "ANTHROPIC_API_KEY"
+                : provider === "openai"
+                  ? "OPENAI_API_KEY"
+                  : "GOOGLE_GENERATIVE_AI_API_KEY";
             return (
               <div key={provider} className="model-provider-block">
-                <h4>{title}</h4>
-                <div className="chip-grid">
-                  {models.map((model) => (
-                    <label
-                      key={model.id}
-                      className={
-                        model.configured ? "chip" : "chip chip-disabled"
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        checked={modelIds.includes(model.id)}
-                        onChange={() =>
-                          toggle(modelIds, model.id, setModelIds)
-                        }
-                        disabled={running || !model.configured}
-                      />
-                      <span>
-                        <strong>{model.label}</strong>
-                        <em>
-                          {model.configured
-                            ? model.description
-                            : `Key missing · ${model.description}`}
-                        </em>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <h4>
+                  {title}
+                  {configured.length > 0 ? (
+                    <span className="model-provider-count">
+                      {configured.length} available
+                    </span>
+                  ) : null}
+                </h4>
+                {configured.length > 0 ? (
+                  <div className="chip-grid">
+                    {configured.map((model) => (
+                      <label key={model.id} className="chip">
+                        <input
+                          type="checkbox"
+                          checked={modelIds.includes(model.id)}
+                          onChange={() =>
+                            toggle(modelIds, model.id, setModelIds)
+                          }
+                          disabled={running}
+                        />
+                        <span>
+                          <strong>{model.label}</strong>
+                          <em>{model.description}</em>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="admin-help model-provider-missing">
+                    No key — set <code>{envHint}</code> to enable{" "}
+                    {models.length} model{models.length === 1 ? "" : "s"}.
+                  </p>
+                )}
+                {missing.length > 0 && configured.length > 0 ? (
+                  <details className="model-provider-collapsed">
+                    <summary>
+                      {missing.length} unavailable (missing {envHint})
+                    </summary>
+                    <ul>
+                      {missing.map((model) => (
+                        <li key={model.id}>{model.label}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </div>
             );
           })}

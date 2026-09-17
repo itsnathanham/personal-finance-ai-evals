@@ -37,12 +37,12 @@ export function sanitizeOpenAIApiKey(
   return cleaned.length > 0 ? cleaned : undefined;
 }
 
-/** Google AI Studio / Gemini Developer API key. */
+/** Google AI Studio / Gemini Developer API key (AIza… or newer AQ.… forms). */
 export function sanitizeGoogleApiKey(
   raw: string | undefined | null,
 ): string | undefined {
   if (!raw) return undefined;
-  const match = raw.match(/AIza[0-9A-Za-z\-_]{20,}/);
+  const match = raw.match(/(?:AIza[0-9A-Za-z\-_]{20,}|AQ\.[0-9A-Za-z\-_]{20,})/);
   if (match) return match[0];
   const cleaned = raw.replace(/[^\x20-\x7E]/g, "").trim();
   return cleaned.length > 0 ? cleaned : undefined;
@@ -104,13 +104,8 @@ export function requireProviderKey(provider: ModelProvider): string | null {
   return entry.configured ? null : entry.missingMessage;
 }
 
-/** @deprecated Prefer requireKeyForModel — kept for older call sites. */
-export function requireAnthropicKey(): string | null {
-  return requireProviderKey("anthropic");
-}
-
 export function requireKeyForModel(modelId?: string | null): string | null {
-  const resolved = resolveModelId(modelId);
+  const resolved = resolveAvailableModelId(modelId);
   const def = getModelDefinition(resolved);
   if (!def) return `Unknown modelId: ${resolved}`;
   return requireProviderKey(def.provider);
@@ -134,7 +129,7 @@ export function resolveAvailableModelId(modelId?: string | null): string {
 }
 
 export function getModel(modelId?: string | null) {
-  const id = resolveModelId(modelId);
+  const id = resolveAvailableModelId(modelId);
   const def = getModelDefinition(id);
   if (!def) {
     throw new Error(`Unknown modelId: ${id}`);
