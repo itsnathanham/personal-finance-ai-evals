@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CartesianGrid,
   Legend,
@@ -154,7 +153,6 @@ export function AdminTrends({
   models: CatalogModels;
   initialRuns?: HistoryRunSummary[];
 }) {
-  const router = useRouter();
   const [runs, setRuns] = useState<HistoryRunSummary[]>([]);
   const [modelIds, setModelIds] = useState<string[]>(() => {
     const configured = models.filter((m) => m.configured).map((m) => m.id);
@@ -185,11 +183,6 @@ export function AdminTrends({
     );
   }
 
-  async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.refresh();
-  }
-
   return (
     <div className="admin-shell">
       <header className="admin-top">
@@ -200,11 +193,8 @@ export function AdminTrends({
           </p>
         </div>
         <div className="admin-top-actions">
+          <Link href="/">Copilot</Link>
           <Link href="/admin">Run evals</Link>
-          <Link href="/">Back to app</Link>
-          <button type="button" className="ghost" onClick={() => void logout()}>
-            Log out
-          </button>
         </div>
       </header>
 

@@ -77,7 +77,7 @@ npm run eval:view             # Promptfoo UI on :15500
 
 ## Deploy notes
 
-Set provider keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`), `ADMIN_PASSWORD`, optional `DATABASE_URL` (Neon), `CHAT_RATE_LIMIT_PER_HOUR`, `EVAL_CONCURRENCY` on Vercel. Admin eval jobs run in-process; for heavy suites prefer a long-lived Node host.
+Set provider keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`), `ADMIN_PASSWORD`, optional `DATABASE_URL` (Neon for durable run history), `CHAT_RATE_LIMIT_PER_HOUR`, and `EVAL_RATE_LIMIT_PER_HOUR` on Vercel. Eval admin pages are publicly browsable; running or deleting evals requires the admin password (modal). Without `DATABASE_URL`, history still works in the browser via localStorage.
 
 ## Project layout
 

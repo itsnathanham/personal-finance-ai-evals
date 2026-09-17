@@ -119,7 +119,7 @@ export function CopilotApp({
             </select>
           </label>
           <a className="admin-link" href="/admin">
-            Eval admin
+            Run evals
           </a>
         </div>
       </header>

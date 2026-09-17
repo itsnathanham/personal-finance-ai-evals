@@ -91,6 +91,26 @@ export function upsertEvalHistoryEntry(entry: HistoryEntry) {
   );
 }
 
+export function removeEvalHistoryEntry(runId: string) {
+  if (typeof window === "undefined") return;
+  const history = loadEvalHistory().filter((e) => e.run.id !== runId);
+  saveEvalHistory(history);
+  sessionStorage.removeItem(`hfc_eval_run_${runId}`);
+}
+
+export function loadLocalRunEntry(runId: string): HistoryEntry | null {
+  if (typeof window === "undefined") return null;
+  const sessionRaw = sessionStorage.getItem(`hfc_eval_run_${runId}`);
+  if (sessionRaw) {
+    try {
+      return JSON.parse(sessionRaw) as HistoryEntry;
+    } catch {
+      // fall through
+    }
+  }
+  return loadEvalHistory().find((e) => e.run.id === runId) ?? null;
+}
+
 export function mergeRunSummaries(
   serverRuns: HistoryRunSummary[],
 ): HistoryRunSummary[] {

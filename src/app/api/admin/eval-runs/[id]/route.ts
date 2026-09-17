@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getPersistedRun } from "@/lib/evals/job-runner";
+import {
+  deletePersistedRun,
+  getPersistedRun,
+} from "@/lib/evals/job-runner";
 
 export async function GET(
   _req: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await context.params;
 
   // Client-local runs (not yet / never persisted)
@@ -72,5 +71,32 @@ export async function GET(
     });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  if (!id || id.startsWith("local_")) {
+    return NextResponse.json({ ok: true, localOnly: true });
+  }
+
+  try {
+    const deleted = await deletePersistedRun(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Delete failed" },
+      { status: 500 },
+    );
   }
 }
