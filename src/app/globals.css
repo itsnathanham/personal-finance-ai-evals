@@ -139,10 +139,13 @@ body {
   flex-direction: column;
   border-right: 1px solid var(--stroke);
   min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
+  background: transparent;
 }
 
 .messages {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 1.5rem;
   display: flex;
