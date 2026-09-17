@@ -226,31 +226,18 @@ export function CopilotApp({
           </RailBlock>
 
           <RailBlock title="Goals">
-            <ul className="goals">
-              {household.goals.map((g) => {
-                const current = Number(g.currentAmount);
-                const target = Number(g.targetAmount);
-                const pct =
-                  target > 0
-                    ? Math.min(100, Math.max(0, (current / target) * 100))
-                    : 0;
-                return (
-                  <li key={g.id}>
-                    <div
-                      className="goal-fill"
-                      style={{ width: `${pct}%` }}
-                      aria-hidden
-                    />
-                    <div className="goal-copy">
-                      <strong>{g.name}</strong>
-                      <span>
-                        {formatMoney(g.currentAmount)} of{" "}
-                        {formatMoney(g.targetAmount)}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
+            <ul>
+              {household.goals.map((g) => (
+                <li key={g.id}>
+                  <div>
+                    <strong>{g.name}</strong>
+                    <span>
+                      {formatMoney(g.currentAmount)} of{" "}
+                      {formatMoney(g.targetAmount)}
+                    </span>
+                  </div>
+                </li>
+              ))}
             </ul>
           </RailBlock>
 

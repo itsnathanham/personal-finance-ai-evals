@@ -40,16 +40,16 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, #2a5a4c 0%, transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, #3a4a28 0%, transparent 50%),
-    linear-gradient(160deg, var(--bg0), var(--bg1) 45%, #121c1a);
+  /* Single page wash — no stacked section gradients */
+  background: linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%);
 }
 
 .copilot-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -238,6 +238,8 @@ body {
   align-items: stretch;
   padding: 1rem 1.5rem 1.35rem;
   border-top: 1px solid var(--stroke);
+  background: var(--bg1);
+  flex-shrink: 0;
 }
 
 .composer input {
@@ -277,7 +279,8 @@ body {
 .rail {
   overflow: auto;
   padding: 1rem 1.1rem 2rem;
-  background: rgba(0, 0, 0, 0.18);
+  /* One solid panel below chat — no extra gradient layers */
+  background: var(--bg2);
 }
 
 .rail-block {
@@ -303,15 +306,13 @@ body {
 }
 
 .rail li {
-  position: relative;
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--stroke);
   border-radius: 0.75rem;
-  background: var(--panel);
-  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .rail li div {
@@ -350,44 +351,22 @@ body {
   color: var(--muted);
 }
 
-.rail ul.goals li {
-  padding: 0;
-}
-
-.goal-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: rgba(126, 200, 176, 0.14);
-  pointer-events: none;
-}
-
-.goal-copy {
-  position: relative;
-  z-index: 1;
-  padding: 0.75rem 0.85rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
 @media (max-width: 960px) {
   .workspace {
     grid-template-columns: 1fr;
   }
 
-  .chat-panel {
-    border-right: none;
-    min-height: min(72vh, 36rem);
-  }
-
   .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
     padding: 1rem 1rem 1rem;
-    /* Keep content clear of third-party preview FABs on the right edge */
     padding-right: max(1rem, 3.25rem);
+    background: var(--bg0);
+    border-bottom: 1px solid var(--stroke);
   }
 
   .topbar-brand {
@@ -415,7 +394,24 @@ body {
     padding-bottom: 0.85rem;
   }
 
+  /* Fixed chat viewport: messages scroll, composer stays put */
+  .chat-panel {
+    border-right: none;
+    display: flex;
+    flex-direction: column;
+    height: 70dvh;
+    max-height: 70dvh;
+    min-height: 22rem;
+    overflow: hidden;
+    background: var(--bg0);
+  }
+
   .messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 1.15rem 1rem 1rem;
     padding-right: max(1rem, 3.25rem);
   }
@@ -442,9 +438,14 @@ body {
   }
 
   .composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
     align-items: stretch;
     padding: 0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom, 0px));
     gap: 0.5rem;
+    background: var(--bg1);
+    border-top: 1px solid var(--stroke);
   }
 
   .composer input,
@@ -458,8 +459,11 @@ body {
   }
 
   .rail {
-    padding: 1.15rem 1rem 2.5rem;
+    overflow: visible;
+    padding: 1.35rem 1rem 2.5rem;
     padding-right: max(1rem, 3.25rem);
+    background: var(--bg2);
+    border-top: 1px solid var(--stroke);
   }
 
   .rail-block {
