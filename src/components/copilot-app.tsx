@@ -101,7 +101,6 @@ export function CopilotApp({
         </div>
         <div className="topbar-actions">
           <label className="model-field">
-            <span className="model-field-label">Model</span>
             <select
               className="model-select"
               value={modelId}

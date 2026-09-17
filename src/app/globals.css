@@ -109,19 +109,14 @@ body {
 }
 
 .model-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  align-items: stretch;
+  display: block;
   min-width: 12rem;
+  align-self: end;
 }
 
-.model-field-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
+.model-select {
+  width: 100%;
+  min-width: 12rem;
 }
 
 .admin-link {
@@ -141,23 +136,23 @@ body {
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   gap: 0;
   min-height: 0;
+  align-items: start;
 }
 
 .chat-panel {
   display: flex;
   flex-direction: column;
+  width: 100%;
   border-right: 1px solid var(--stroke);
+  max-height: calc(100vh - 5rem);
+  max-height: calc(100dvh - 5rem);
   min-height: 0;
   background: transparent;
-}
-
-.chat-panel:has(.messages:not(.is-empty)) {
-  min-height: calc(100vh - 5rem);
-  min-height: calc(100dvh - 5rem);
+  overflow: hidden;
 }
 
 .messages {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow: auto;
   padding: 1.5rem;
@@ -462,35 +457,28 @@ body {
     padding-bottom: 0.85rem;
   }
 
-  /* Fixed chat viewport once conversation starts; empty state stays compact */
+  /* Chat grows with content; caps to viewport so long threads scroll */
   .chat-panel {
     border-right: none;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-height: none;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
     background: transparent;
   }
 
-  .chat-panel:has(.messages:not(.is-empty)) {
-    height: 70dvh;
-    max-height: 70dvh;
-    min-height: 22rem;
-  }
-
   .messages {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
     padding: 1.15rem 1rem 1rem;
     padding-right: max(1rem, 3.25rem);
   }
 
   .messages.is-empty {
     flex: 0 0 auto;
-    overflow: visible;
     padding-bottom: 0.5rem;
   }
 
