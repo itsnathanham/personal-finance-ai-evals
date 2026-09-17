@@ -92,11 +92,15 @@ export function CopilotApp({
       <header className="topbar">
         <div className="topbar-brand">
           <p className="brand">Personal Finance AI Evals</p>
+          <p className="tagline">
+            Exploratory personal finance AI copilot, plus an eval and
+            observability infrastructure to compare LLMs on accuracy,
+            policy/red-team refusals, costs, and latency.
+          </p>
           <p className="sub">
             Signed in as {household.user?.displayName ?? "Guest"} · synthetic
-            demo data
+            demo · not financial advice
           </p>
-          <p className="disclaimer">Not financial advice · Eval-ready</p>
         </div>
         <div className="topbar-actions">
           <label className="model-field">
