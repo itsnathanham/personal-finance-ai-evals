@@ -192,7 +192,8 @@ export function AdminRunDetail({ runId }: { runId: string }) {
       if (res.status === 401) {
         throw new Error("Unauthorized");
       }
-      if (!res.ok) {
+      // 404 / missing server row is OK — still clear browser history.
+      if (!res.ok && res.status !== 404) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? "Delete failed");
       }
@@ -213,9 +214,9 @@ export function AdminRunDetail({ runId }: { runId: string }) {
             <p className="brand">Run detail</p>
           </div>
           <div className="admin-top-actions">
+            <Link href="/admin">Run evals</Link>
             <Link href="/admin/trends">Eval trends</Link>
             <Link href="/">Copilot</Link>
-            <Link href="/admin">Run evals</Link>
           </div>
         </header>
         <p className="admin-error">{error}</p>
@@ -241,9 +242,9 @@ export function AdminRunDetail({ runId }: { runId: string }) {
           </p>
         </div>
         <div className="admin-top-actions">
+          <Link href="/admin">Run evals</Link>
           <Link href="/admin/trends">Eval trends</Link>
           <Link href="/">Copilot</Link>
-          <Link href="/admin">Run evals</Link>
           <button
             type="button"
             className="ghost danger-text"

@@ -147,9 +147,13 @@ body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--stroke);
+  min-height: 0;
+  background: transparent;
+}
+
+.chat-panel:has(.messages:not(.is-empty)) {
   min-height: calc(100vh - 5rem);
   min-height: calc(100dvh - 5rem);
-  background: transparent;
 }
 
 .messages {
@@ -162,13 +166,18 @@ body {
   gap: 1rem;
 }
 
+.messages.is-empty {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding-bottom: 0.75rem;
+}
+
 .empty h1 {
   margin: 0 0 0.75rem;
   font-family: var(--font-display), Georgia, serif;
   font-weight: 500;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   line-height: 1.15;
-  max-width: 18ch;
 }
 
 .empty p {
@@ -453,16 +462,20 @@ body {
     padding-bottom: 0.85rem;
   }
 
-  /* Fixed chat viewport: messages scroll, composer stays put */
+  /* Fixed chat viewport once conversation starts; empty state stays compact */
   .chat-panel {
     border-right: none;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .chat-panel:has(.messages:not(.is-empty)) {
     height: 70dvh;
     max-height: 70dvh;
     min-height: 22rem;
-    overflow: hidden;
-    background: transparent;
   }
 
   .messages {
@@ -475,9 +488,14 @@ body {
     padding-right: max(1rem, 3.25rem);
   }
 
+  .messages.is-empty {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-bottom: 0.5rem;
+  }
+
   .empty h1 {
     font-size: clamp(1.55rem, 7vw, 2rem);
-    max-width: 14ch;
     margin-bottom: 0.65rem;
   }
 

@@ -89,10 +89,9 @@ export async function DELETE(
 
   try {
     const deleted = await deletePersistedRun(id);
-    if (!deleted) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json({ ok: true });
+    // Treat missing rows as success — common on Vercel without durable DB,
+    // or when the run only lived in this browser.
+    return NextResponse.json({ ok: true, missing: !deleted });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Delete failed" },

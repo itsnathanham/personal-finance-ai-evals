@@ -97,10 +97,7 @@ export function CopilotApp({
             observability infrastructure to compare LLMs on accuracy,
             policy/red-team refusals, costs, and latency.
           </p>
-          <p className="sub">
-            Signed in as {household.user?.displayName ?? "Guest"} · synthetic
-            demo · not financial advice
-          </p>
+          <p className="sub">synthetic demo &amp; data</p>
         </div>
         <div className="topbar-actions">
           <label className="model-field">
@@ -126,7 +123,7 @@ export function CopilotApp({
 
       <div className="workspace">
         <section className="chat-panel">
-          <div className="messages">
+          <div className={`messages${messages.length === 0 ? " is-empty" : ""}`}>
             {messages.length === 0 && (
               <div className="empty">
                 <h1>Ask about Duane Jetski&apos;s money</h1>
