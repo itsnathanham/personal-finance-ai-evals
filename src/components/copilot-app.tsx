@@ -100,6 +100,9 @@ export function CopilotApp({
           <p className="sub">synthetic demo &amp; data</p>
         </div>
         <div className="topbar-actions">
+          <a className="admin-link" href="/admin">
+            Run evals
+          </a>
           <label className="model-field">
             <select
               className="model-select"
@@ -114,9 +117,6 @@ export function CopilotApp({
               ))}
             </select>
           </label>
-          <a className="admin-link" href="/admin">
-            Run evals
-          </a>
         </div>
       </header>
 

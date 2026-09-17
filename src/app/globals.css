@@ -102,16 +102,15 @@ body {
 
 .topbar-actions {
   display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 0.55rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
   flex-shrink: 0;
 }
 
 .model-field {
   display: block;
   min-width: 12rem;
-  align-self: end;
 }
 
 .model-select {
@@ -123,7 +122,7 @@ body {
   color: var(--accent-2);
   text-decoration: none;
   font-size: 0.85rem;
-  align-self: end;
+  white-space: nowrap;
 }
 
 .admin-link:hover {
@@ -136,7 +135,8 @@ body {
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   gap: 0;
   min-height: 0;
-  align-items: start;
+  /* Stretch columns so the chat/rail divider runs the full content height */
+  align-items: stretch;
 }
 
 .chat-panel {
@@ -144,17 +144,17 @@ body {
   flex-direction: column;
   width: 100%;
   border-right: 1px solid var(--stroke);
-  max-height: calc(100vh - 5rem);
-  max-height: calc(100dvh - 5rem);
-  min-height: 0;
+  min-height: 100%;
   background: transparent;
-  overflow: hidden;
+  /* Content-sized messages keep the composer under the thread;
+     column stretch only extends the border beside the rail. */
+  overflow: visible;
 }
 
 .messages {
   flex: 0 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -163,7 +163,6 @@ body {
 
 .messages.is-empty {
   flex: 0 0 auto;
-  overflow: visible;
   padding-bottom: 0.75rem;
 }
 
@@ -441,7 +440,7 @@ body {
   }
 
   .topbar-actions {
-    align-items: stretch;
+    align-items: center;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 0.65rem 0.85rem;
@@ -453,8 +452,7 @@ body {
   }
 
   .admin-link {
-    align-self: end;
-    padding-bottom: 0.85rem;
+    flex: 0 0 auto;
   }
 
   /* Chat grows with content; caps to viewport so long threads scroll */
