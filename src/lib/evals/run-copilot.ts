@@ -1,9 +1,8 @@
 import { generateText, stepCountIs, type ToolSet } from "ai";
 import { createFinanceTools } from "@/lib/finance-tools";
-import { getModel } from "@/lib/model";
+import { getModel, resolveAvailableModelId } from "@/lib/model";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { DEMO_HOUSEHOLD_ID } from "@/db/seed-data";
-import { resolveModelId } from "@/lib/models/registry";
 import { estimateCostUsd, roundCostUsd } from "@/lib/models/pricing";
 
 export type EvalCoreResult = {
@@ -42,7 +41,7 @@ export async function runCopilotEval(options: {
   modelId?: string | null;
   householdId?: string;
 }): Promise<EvalCoreResult> {
-  const modelId = resolveModelId(options.modelId);
+  const modelId = resolveAvailableModelId(options.modelId);
   const householdId = options.householdId ?? DEMO_HOUSEHOLD_ID;
   const started = Date.now();
 

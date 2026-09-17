@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { listSuites } from "@/lib/evals/load-suites";
-import { MODEL_REGISTRY } from "@/lib/models/registry";
+import { catalogModels } from "@/lib/models/catalog";
 
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    models: MODEL_REGISTRY,
+    models: catalogModels(),
     suites: listSuites().map((s) => ({
       id: s.id,
       name: s.name,

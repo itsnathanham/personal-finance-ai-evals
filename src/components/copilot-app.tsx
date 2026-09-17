@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { FormEvent, useMemo, useState, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
 
 function formatMoney(value: string) {
   const n = Number(value);
@@ -89,17 +90,17 @@ export function CopilotApp({
   return (
     <div className="copilot-shell">
       <header className="topbar">
-        <div>
+        <div className="topbar-brand">
           <p className="brand">Personal Finance AI Evals</p>
           <p className="sub">
             Signed in as {household.user?.displayName ?? "Guest"} · synthetic
             demo data
           </p>
+          <p className="disclaimer">Not financial advice · Eval-ready</p>
         </div>
         <div className="topbar-actions">
-          <p className="disclaimer">Not financial advice · Eval-ready</p>
-          <label>
-            <span className="sr-only">Model</span>
+          <label className="model-field">
+            <span className="model-field-label">Model</span>
             <select
               className="model-select"
               value={modelId}
@@ -113,7 +114,9 @@ export function CopilotApp({
               ))}
             </select>
           </label>
-          <a href="/admin">Eval admin</a>
+          <a className="admin-link" href="/admin">
+            Eval admin
+          </a>
         </div>
       </header>
 
@@ -152,6 +155,13 @@ export function CopilotApp({
                 <div className="content">
                   {m.parts.map((part, i) => {
                     if (part.type === "text") {
+                      if (m.role === "assistant") {
+                        return (
+                          <div key={`${m.id}-${i}`} className="md">
+                            <ReactMarkdown>{part.text}</ReactMarkdown>
+                          </div>
+                        );
+                      }
                       return <p key={`${m.id}-${i}`}>{part.text}</p>;
                     }
                     if (part.type.startsWith("tool-")) {
@@ -178,7 +188,7 @@ export function CopilotApp({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about balances, budgets, or June spend…"
+              placeholder="Ask about balances or budgets…"
               aria-label="Message"
             />
             <button
@@ -201,7 +211,7 @@ export function CopilotApp({
                       {a.institution} ···{a.mask}
                     </span>
                   </div>
-                  <em>{formatMoney(a.balance)}</em>
+                  <em className="amount">{formatMoney(a.balance)}</em>
                 </li>
               ))}
             </ul>
@@ -212,12 +222,12 @@ export function CopilotApp({
               {household.budgets.map((b) => (
                 <li key={b.category}>
                   <div>
-                    <strong>{b.category}</strong>
+                    <strong className="title-case">{b.category}</strong>
                     <span>
                       spent {formatMoney(b.spent)} / {formatMoney(b.limit)}
                     </span>
                   </div>
-                  <em>{formatMoney(b.remaining)} left</em>
+                  <em className="amount">{formatMoney(b.remaining)} left</em>
                 </li>
               ))}
             </ul>
@@ -241,17 +251,22 @@ export function CopilotApp({
 
           <RailBlock title="Recent transactions">
             <ul className="tx">
-              {household.recentTransactions.map((t) => (
-                <li key={t.id}>
-                  <div>
-                    <strong>{t.merchant}</strong>
-                    <span>
-                      {t.postedAt} · {t.category}
-                    </span>
-                  </div>
-                  <em>{formatMoney(t.amount)}</em>
-                </li>
-              ))}
+              {household.recentTransactions.map((t) => {
+                const negative = Number(t.amount) < 0;
+                return (
+                  <li key={t.id}>
+                    <div>
+                      <strong>{t.merchant}</strong>
+                      <span>
+                        {t.postedAt} · {t.category}
+                      </span>
+                    </div>
+                    <em className={negative ? "amount debit" : "amount"}>
+                      {formatMoney(t.amount)}
+                    </em>
+                  </li>
+                );
+              })}
             </ul>
           </RailBlock>
         </aside>

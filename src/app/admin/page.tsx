@@ -4,7 +4,7 @@ import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
 import { listPersistedRuns } from "@/lib/evals/job-runner";
 import { listSuites } from "@/lib/evals/load-suites";
 import { mapPersistedRun } from "@/lib/evals/map-run";
-import { MODEL_REGISTRY } from "@/lib/models/registry";
+import { catalogModels } from "@/lib/models/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +27,7 @@ export default async function AdminPage() {
   if (!authed) return <AdminLoginForm />;
 
   const catalog = {
-    models: MODEL_REGISTRY.map((m) => ({
-      id: m.id,
-      label: m.label,
-      description: m.description,
-    })),
+    models: catalogModels(),
     suites: listSuites().map((s) => ({
       id: s.id,
       name: s.name,

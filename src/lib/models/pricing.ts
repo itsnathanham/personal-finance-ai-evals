@@ -6,16 +6,9 @@ export type ModelPricing = {
   outputPerMTok: number;
 };
 
-/** Sonnet 5 intro pricing through 2026-08-31; then $3 / $15. */
-const SONNET_5_INTRO_ENDS = Date.UTC(2026, 7, 31, 23, 59, 59, 999);
-
-export function pricingForModel(modelId: string, at = Date.now()): ModelPricing | null {
+export function pricingForModel(modelId: string, _at = Date.now()): ModelPricing | null {
   const def = getModelDefinition(modelId);
   if (!def) return null;
-
-  if (modelId === "claude-sonnet-5" && at <= SONNET_5_INTRO_ENDS) {
-    return { inputPerMTok: 2, outputPerMTok: 10 };
-  }
 
   return {
     inputPerMTok: def.inputPerMTok,

@@ -7,7 +7,6 @@ import {
 import { isSuiteId, type SuiteId } from "@/lib/evals/load-suites";
 import { mapPersistedRun } from "@/lib/evals/map-run";
 import { isAllowedModelId } from "@/lib/models/registry";
-import { requireAnthropicKey } from "@/lib/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,11 +32,6 @@ export async function GET() {
 export async function POST(req: Request) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const missingKey = requireAnthropicKey();
-  if (missingKey) {
-    return NextResponse.json({ error: missingKey }, { status: 503 });
   }
 
   const body = await req.json();

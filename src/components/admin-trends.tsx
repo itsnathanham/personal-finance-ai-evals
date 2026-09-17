@@ -29,7 +29,12 @@ import {
 
 const CHART_COLORS = ["#7ec8b0", "#e8a87c", "#8aa4d4", "#d4a5c9", "#c4d47a"];
 
-type CatalogModels = Array<{ id: string; label: string }>;
+type CatalogModels = Array<{
+  id: string;
+  label: string;
+  provider?: "anthropic" | "openai" | "google";
+  configured?: boolean;
+}>;
 
 function shortTime(iso: string) {
   const d = new Date(iso);
@@ -151,9 +156,10 @@ export function AdminTrends({
 }) {
   const router = useRouter();
   const [runs, setRuns] = useState<HistoryRunSummary[]>([]);
-  const [modelIds, setModelIds] = useState<string[]>(() =>
-    models.map((m) => m.id),
-  );
+  const [modelIds, setModelIds] = useState<string[]>(() => {
+    const configured = models.filter((m) => m.configured).map((m) => m.id);
+    return configured.length > 0 ? configured : models.map((m) => m.id);
+  });
   const [suite, setSuite] = useState<SuiteFilter>("all");
 
   useEffect(() => {
@@ -211,21 +217,41 @@ export function AdminTrends({
         </p>
 
         <h3>Models</h3>
-        <div className="chip-grid">
-          {models.map((model) => (
-            <label key={model.id} className="chip">
-              <input
-                type="checkbox"
-                checked={modelIds.includes(model.id)}
-                onChange={() => toggleModel(model.id)}
-              />
-              <span>
-                <strong>{model.label}</strong>
-                <em>{model.id}</em>
-              </span>
-            </label>
-          ))}
-        </div>
+        {(["anthropic", "openai", "google"] as const).map((provider) => {
+          const group = models.filter((m) => m.provider === provider);
+          if (group.length === 0) return null;
+          const title =
+            provider === "anthropic"
+              ? "Anthropic"
+              : provider === "openai"
+                ? "OpenAI"
+                : "Google Gemini";
+          return (
+            <div key={provider} className="model-provider-block">
+              <h4>{title}</h4>
+              <div className="chip-grid chip-grid-compact">
+                {group.map((model) => (
+                  <label
+                    key={model.id}
+                    className={
+                      model.configured === false ? "chip chip-muted" : "chip"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={modelIds.includes(model.id)}
+                      onChange={() => toggleModel(model.id)}
+                    />
+                    <span>
+                      <strong>{model.label}</strong>
+                      <em>{model.id}</em>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
         <h3>Suite</h3>
         <div className="filter-pills">

@@ -27,17 +27,19 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: claude-sonnet-5
+          # Promptfoo YAML suites target localhost:3003/api/eval
+          PORT: "3003"
         run: |
           npm run build
           npm run start &
           for i in $(seq 1 60); do
-            if curl -sf http://localhost:3000/api/household >/dev/null; then
-              echo "App is up"
+            if curl -sf http://localhost:3003/api/household >/dev/null; then
+              echo "App is up on :3003"
               exit 0
             fi
             sleep 2
           done
-          echo "App failed to start"
+          echo "App failed to start on :3003"
           exit 1
 
       - name: Run Promptfoo golden + policy suite
