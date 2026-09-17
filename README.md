@@ -33,7 +33,7 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 ## Admin eval dashboard
 
 1. Sign in with `ADMIN_PASSWORD`
-2. Select any mix of suites and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5):
+2. Select any mix of suites and one or more **Claude** models (Haiku 4.5, Sonnet 5, Opus 5, Fable 5.1):
    - **Goldens** — ledger accuracy
    - **Policy** — product-boundary refusals
    - **Red team** — jailbreaks / exfil probes
@@ -42,7 +42,7 @@ If the terminal says port 3000 is busy, use the port it prints and open `/admin`
 4. When finished you’re taken to the run detail page with **pass rate**, **estimated cost**, **avg latency**, and per-model breakdown
 5. Open **Trends** (`/admin/trends`) to filter by model + suite and chart pass/fail/cost/latency over time
 
-Costs are **list-price estimates** from Anthropic token usage (Sonnet 5 uses intro rates through Aug 31, 2026). Cache/batch discounts are not applied.
+Costs are **list-price estimates** from Anthropic token usage (current Claude API rates). Cache/batch discounts are not applied.
 
 Run history for trends is kept in **browser localStorage** (merged with best-effort server runs). For durable server-side history across devices, set a Neon `DATABASE_URL` on Vercel.
 

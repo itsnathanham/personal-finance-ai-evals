@@ -5,14 +5,17 @@ export type ModelDefinition = {
   label: string;
   provider: ModelProvider;
   description: string;
-  /** Standard list price ($/MTok). Sonnet 5 may use intro rates via pricing helper. */
+  /** Standard list price ($/MTok). */
   inputPerMTok: number;
   outputPerMTok: number;
 };
 
 /**
- * Curated Claude models for the app + admin eval dashboard.
+ * Current Claude API lineup for the app + admin eval dashboard.
+ * Source: https://platform.claude.com/docs/en/about-claude/models/overview
  * Provider-pluggable later; Anthropic-only for now.
+ *
+ * Order: cheapest → most capable so admin defaults stay cost-safe.
  */
 export const MODEL_REGISTRY: ModelDefinition[] = [
   {
@@ -27,17 +30,25 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     id: "claude-sonnet-5",
     label: "Claude Sonnet 5",
     provider: "anthropic",
-    description: "Default balance of quality, speed, and cost",
-    inputPerMTok: 3,
-    outputPerMTok: 15,
+    description: "Best balance of speed and intelligence",
+    inputPerMTok: 2,
+    outputPerMTok: 10,
   },
   {
     id: "claude-opus-5",
     label: "Claude Opus 5",
     provider: "anthropic",
-    description: "Highest quality ceiling in the current stack",
+    description: "Strong default for complex agentic and enterprise work",
     inputPerMTok: 5,
     outputPerMTok: 25,
+  },
+  {
+    id: "claude-fable-5-1",
+    label: "Claude Fable 5.1",
+    provider: "anthropic",
+    description: "Highest ceiling — long-horizon reasoning and hard evals",
+    inputPerMTok: 10,
+    outputPerMTok: 50,
   },
 ];
 
