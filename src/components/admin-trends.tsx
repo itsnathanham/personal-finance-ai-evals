@@ -193,8 +193,8 @@ export function AdminTrends({
           </p>
         </div>
         <div className="admin-top-actions">
-          <Link href="/">Copilot</Link>
           <Link href="/admin">Run evals</Link>
+          <Link href="/">Copilot</Link>
         </div>
       </header>
 
