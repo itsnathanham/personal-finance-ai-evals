@@ -125,11 +125,7 @@ export function CopilotApp({
           <div className="messages">
             {messages.length === 0 && (
               <div className="empty">
-                <h1>Ask about Duane Jetski&apos;s household money</h1>
-                <p>
-                  Balances, budgets, and transactions are grounded in a seeded
-                  ledger. Try a prompt below.
-                </p>
+                <h1>Ask about Duane Jetski&apos;s money</h1>
                 <div className="suggestions">
                   {suggestions.map((s) => (
                     <button
