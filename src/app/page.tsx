@@ -9,9 +9,12 @@ import { accounts, budgets, goals, transactions, users } from "@/db/schema";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import {
   DEFAULT_MODEL_ID,
-  MODEL_REGISTRY,
   resolveModelId,
 } from "@/lib/models/registry";
+import {
+  availableCatalogModels,
+  defaultAvailableModelId,
+} from "@/lib/models/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -116,11 +119,16 @@ async function loadHousehold() {
 
 export default async function Home() {
   const household = await loadHousehold();
+  const models = availableCatalogModels();
   return (
     <CopilotApp
       household={household}
-      models={MODEL_REGISTRY.map((m) => ({ id: m.id, label: m.label }))}
-      defaultModelId={resolveModelId(DEFAULT_MODEL_ID)}
+      models={models.map((m) => ({ id: m.id, label: m.label }))}
+      defaultModelId={
+        models.length > 0
+          ? defaultAvailableModelId()
+          : resolveModelId(DEFAULT_MODEL_ID)
+      }
     />
   );
 }

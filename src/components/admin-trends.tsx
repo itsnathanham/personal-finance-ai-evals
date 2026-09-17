@@ -29,7 +29,12 @@ import {
 
 const CHART_COLORS = ["#7ec8b0", "#e8a87c", "#8aa4d4", "#d4a5c9", "#c4d47a"];
 
-type CatalogModels = Array<{ id: string; label: string }>;
+type CatalogModels = Array<{
+  id: string;
+  label: string;
+  provider?: "anthropic" | "openai" | "google";
+  configured?: boolean;
+}>;
 
 function shortTime(iso: string) {
   const d = new Date(iso);

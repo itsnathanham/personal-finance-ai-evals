@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.26",
+    "@ai-sdk/google": "^4.0.26",
+    "@ai-sdk/openai": "^4.0.26",
     "@ai-sdk/react": "^4.0.48",
     "@electric-sql/pglite": "^0.5.4",
     "@neondatabase/serverless": "^1.1.0",

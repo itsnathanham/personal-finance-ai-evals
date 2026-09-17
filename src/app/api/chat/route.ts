@@ -7,7 +7,7 @@ import {
   type UIMessage,
 } from "ai";
 import { createFinanceTools } from "@/lib/finance-tools";
-import { getModel, requireAnthropicKey } from "@/lib/model";
+import { getModel, requireKeyForModel } from "@/lib/model";
 import { isAllowedModelId } from "@/lib/models/registry";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
@@ -17,11 +17,6 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const missingKey = requireAnthropicKey();
-  if (missingKey) {
-    return Response.json({ error: missingKey }, { status: 503 });
-  }
-
   const rl = rateLimit(clientKey(req));
   if (!rl.ok) {
     return Response.json(
@@ -57,6 +52,11 @@ export async function POST(req: Request) {
     typeof body.modelId === "string" ? body.modelId : undefined;
   if (modelId && !isAllowedModelId(modelId)) {
     return Response.json({ error: "Unknown modelId" }, { status: 400 });
+  }
+
+  const missingKey = requireKeyForModel(modelId);
+  if (missingKey) {
+    return Response.json({ error: missingKey }, { status: 503 });
   }
 
   const result = streamText({

@@ -395,6 +395,24 @@ body {
   font-size: 0.8rem;
 }
 
+.chip-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.model-provider-block {
+  margin-bottom: 0.85rem;
+}
+
+.model-provider-block h4 {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .admin-login {
   max-width: 26rem;
   margin: 4rem auto;

@@ -22,7 +22,13 @@ type CatalogCase = {
 };
 
 export type Catalog = {
-  models: Array<{ id: string; label: string; description: string }>;
+  models: Array<{
+    id: string;
+    label: string;
+    description: string;
+    provider: "anthropic" | "openai" | "google";
+    configured: boolean;
+  }>;
   suites: Array<{
     id: string;
     name: string;
@@ -48,9 +54,10 @@ export function AdminDashboard({
     mergeRunSummaries(initialRuns),
   );
   const [suiteIds, setSuiteIds] = useState<string[]>(["goldens"]);
-  const [modelIds, setModelIds] = useState<string[]>(() =>
-    initialCatalog.models[0] ? [initialCatalog.models[0].id] : [],
-  );
+  const [modelIds, setModelIds] = useState<string[]>(() => {
+    const firstConfigured = initialCatalog.models.find((m) => m.configured);
+    return firstConfigured ? [firstConfigured.id] : [];
+  });
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({
@@ -301,7 +308,7 @@ export function AdminDashboard({
           <p className="brand">Eval Admin</p>
           <p className="sub">
             Run goldens, policy, red-team, or Promptfoo Finance suites across
-            Claude models
+            Anthropic, OpenAI, and Gemini models
           </p>
         </div>
         <div className="admin-top-actions">
@@ -342,22 +349,54 @@ export function AdminDashboard({
           </div>
 
           <h3>Models</h3>
-          <div className="chip-grid">
-            {catalog.models.map((model) => (
-              <label key={model.id} className="chip">
-                <input
-                  type="checkbox"
-                  checked={modelIds.includes(model.id)}
-                  onChange={() => toggle(modelIds, model.id, setModelIds)}
-                  disabled={running}
-                />
-                <span>
-                  <strong>{model.label}</strong>
-                  <em>{model.description}</em>
-                </span>
-              </label>
-            ))}
-          </div>
+          <p className="admin-help">
+            Models without a configured API key are disabled. Add{" "}
+            <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, and/or{" "}
+            <code>GOOGLE_GENERATIVE_AI_API_KEY</code> in{" "}
+            <code>.env.local</code> / Vercel env (never commit secrets).
+          </p>
+          {(["anthropic", "openai", "google"] as const).map((provider) => {
+            const models = catalog.models.filter((m) => m.provider === provider);
+            if (models.length === 0) return null;
+            const title =
+              provider === "anthropic"
+                ? "Anthropic"
+                : provider === "openai"
+                  ? "OpenAI"
+                  : "Google Gemini";
+            return (
+              <div key={provider} className="model-provider-block">
+                <h4>{title}</h4>
+                <div className="chip-grid">
+                  {models.map((model) => (
+                    <label
+                      key={model.id}
+                      className={
+                        model.configured ? "chip" : "chip chip-disabled"
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={modelIds.includes(model.id)}
+                        onChange={() =>
+                          toggle(modelIds, model.id, setModelIds)
+                        }
+                        disabled={running || !model.configured}
+                      />
+                      <span>
+                        <strong>{model.label}</strong>
+                        <em>
+                          {model.configured
+                            ? model.description
+                            : `Key missing · ${model.description}`}
+                        </em>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
 
           <p className="admin-estimate">
             Estimated cases this run: <strong>{estimatedCases}</strong>

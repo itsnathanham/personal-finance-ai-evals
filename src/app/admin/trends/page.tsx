@@ -4,7 +4,7 @@ import { isAdminAuthenticated, isAdminConfigured } from "@/lib/admin-auth";
 import { listPersistedRuns } from "@/lib/evals/job-runner";
 import { mapPersistedRun } from "@/lib/evals/map-run";
 import { normalizeSummary } from "@/lib/evals/trends";
-import { MODEL_REGISTRY } from "@/lib/models/registry";
+import { catalogModels } from "@/lib/models/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,12 @@ export default async function AdminTrendsPage() {
 
   return (
     <AdminTrends
-      models={MODEL_REGISTRY.map((m) => ({ id: m.id, label: m.label }))}
+      models={catalogModels().map((m) => ({
+        id: m.id,
+        label: `${m.label}`,
+        provider: m.provider,
+        configured: m.configured,
+      }))}
       initialRuns={initialRuns}
     />
   );
