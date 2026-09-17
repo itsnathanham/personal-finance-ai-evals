@@ -57,11 +57,18 @@ body {
 .topbar {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.25rem;
   align-items: end;
   padding: 1.25rem 1.5rem 1rem;
   border-bottom: 1px solid var(--stroke);
   backdrop-filter: blur(8px);
+}
+
+.topbar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .brand {
@@ -69,18 +76,54 @@ body {
   font-family: var(--font-display), Georgia, serif;
   font-size: 1.45rem;
   letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .sub,
 .disclaimer {
-  margin: 0.2rem 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 .disclaimer {
-  text-align: right;
-  max-width: 16rem;
+  max-width: 28rem;
+}
+
+.topbar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.model-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: stretch;
+  min-width: 12rem;
+}
+
+.model-field-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.admin-link {
+  color: var(--accent-2);
+  text-decoration: none;
+  font-size: 0.85rem;
+  align-self: end;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
 }
 
 .workspace {
@@ -192,18 +235,21 @@ body {
 .composer {
   display: flex;
   gap: 0.6rem;
+  align-items: stretch;
   padding: 1rem 1.5rem 1.35rem;
   border-top: 1px solid var(--stroke);
 }
 
 .composer input {
   flex: 1;
+  min-width: 0;
   border-radius: 999px;
   border: 1px solid var(--stroke);
   background: rgba(0, 0, 0, 0.25);
   color: var(--ink);
   padding: 0.8rem 1rem;
   font: inherit;
+  line-height: 1.25;
 }
 
 .composer input:focus {
@@ -217,6 +263,10 @@ body {
   border: none;
   font-weight: 600;
   padding-inline: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .composer button:disabled {
@@ -231,11 +281,11 @@ body {
 }
 
 .rail-block {
-  margin-bottom: 1.35rem;
+  margin-bottom: 1.6rem;
 }
 
 .rail-block h2 {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -253,36 +303,72 @@ body {
 }
 
 .rail li {
+  position: relative;
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.7rem 0.75rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid var(--stroke);
   border-radius: 0.75rem;
   background: var(--panel);
+  overflow: hidden;
 }
 
 .rail li div {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   min-width: 0;
 }
 
 .rail li strong {
   font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.rail li strong.title-case {
+  text-transform: capitalize;
 }
 
 .rail li span {
   color: var(--muted);
   font-size: 0.78rem;
+  line-height: 1.3;
 }
 
-.rail li em {
+.rail li em.amount {
   font-style: normal;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--accent-2);
+  font-weight: 600;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
+.rail li em.amount.debit {
+  color: var(--muted);
+}
+
+.rail ul.goals li {
+  padding: 0;
+}
+
+.goal-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(126, 200, 176, 0.14);
+  pointer-events: none;
+}
+
+.goal-copy {
+  position: relative;
+  z-index: 1;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
@@ -292,16 +378,105 @@ body {
 
   .chat-panel {
     border-right: none;
-    min-height: 70vh;
+    min-height: min(72vh, 36rem);
   }
 
   .topbar {
     flex-direction: column;
-    align-items: start;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem 1rem 1rem;
+    /* Keep content clear of third-party preview FABs on the right edge */
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
   }
 
-  .disclaimer {
+  .topbar-brand {
+    gap: 0.4rem;
+  }
+
+  .brand {
+    font-size: 1.55rem;
+  }
+
+  .topbar-actions {
+    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.65rem 0.85rem;
+  }
+
+  .model-field {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .admin-link {
+    align-self: end;
+    padding-bottom: 0.85rem;
+  }
+
+  .messages {
+    padding: 1.15rem 1rem 1rem;
+    padding-right: max(1rem, 3.25rem);
+  }
+
+  .empty h1 {
+    font-size: clamp(1.55rem, 7vw, 2rem);
+    max-width: 14ch;
+    margin-bottom: 0.65rem;
+  }
+
+  .empty p {
+    margin-bottom: 1rem;
+  }
+
+  .suggestions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .suggestions button {
+    width: 100%;
     text-align: left;
+    border-radius: 0.85rem;
+  }
+
+  .composer {
+    align-items: stretch;
+    padding: 0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.5rem;
+  }
+
+  .composer input,
+  .composer button {
+    min-height: 2.85rem;
+    border-radius: 0.9rem;
+  }
+
+  .composer button {
+    padding-inline: 1rem;
+  }
+
+  .rail {
+    padding: 1.15rem 1rem 2.5rem;
+    padding-right: max(1rem, 3.25rem);
+  }
+
+  .rail-block {
+    margin-bottom: 1.75rem;
+  }
+
+  .rail-block h2 {
+    margin-bottom: 0.85rem;
+  }
+
+  .rail li {
+    gap: 0.65rem;
+    padding: 0.8rem 0.85rem;
+  }
+
+  .rail li em.amount {
+    font-size: 0.9rem;
   }
 }
 

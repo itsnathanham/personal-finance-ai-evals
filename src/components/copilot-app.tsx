@@ -89,17 +89,17 @@ export function CopilotApp({
   return (
     <div className="copilot-shell">
       <header className="topbar">
-        <div>
+        <div className="topbar-brand">
           <p className="brand">Personal Finance AI Evals</p>
           <p className="sub">
             Signed in as {household.user?.displayName ?? "Guest"} · synthetic
             demo data
           </p>
+          <p className="disclaimer">Not financial advice · Eval-ready</p>
         </div>
         <div className="topbar-actions">
-          <p className="disclaimer">Not financial advice · Eval-ready</p>
-          <label>
-            <span className="sr-only">Model</span>
+          <label className="model-field">
+            <span className="model-field-label">Model</span>
             <select
               className="model-select"
               value={modelId}
@@ -113,7 +113,9 @@ export function CopilotApp({
               ))}
             </select>
           </label>
-          <a href="/admin">Eval admin</a>
+          <a className="admin-link" href="/admin">
+            Eval admin
+          </a>
         </div>
       </header>
 
@@ -178,7 +180,7 @@ export function CopilotApp({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about balances, budgets, or June spend…"
+              placeholder="Ask about balances or budgets…"
               aria-label="Message"
             />
             <button
@@ -201,7 +203,7 @@ export function CopilotApp({
                       {a.institution} ···{a.mask}
                     </span>
                   </div>
-                  <em>{formatMoney(a.balance)}</em>
+                  <em className="amount">{formatMoney(a.balance)}</em>
                 </li>
               ))}
             </ul>
@@ -212,46 +214,64 @@ export function CopilotApp({
               {household.budgets.map((b) => (
                 <li key={b.category}>
                   <div>
-                    <strong>{b.category}</strong>
+                    <strong className="title-case">{b.category}</strong>
                     <span>
                       spent {formatMoney(b.spent)} / {formatMoney(b.limit)}
                     </span>
                   </div>
-                  <em>{formatMoney(b.remaining)} left</em>
+                  <em className="amount">{formatMoney(b.remaining)} left</em>
                 </li>
               ))}
             </ul>
           </RailBlock>
 
           <RailBlock title="Goals">
-            <ul>
-              {household.goals.map((g) => (
-                <li key={g.id}>
-                  <div>
-                    <strong>{g.name}</strong>
-                    <span>
-                      {formatMoney(g.currentAmount)} of{" "}
-                      {formatMoney(g.targetAmount)}
-                    </span>
-                  </div>
-                </li>
-              ))}
+            <ul className="goals">
+              {household.goals.map((g) => {
+                const current = Number(g.currentAmount);
+                const target = Number(g.targetAmount);
+                const pct =
+                  target > 0
+                    ? Math.min(100, Math.max(0, (current / target) * 100))
+                    : 0;
+                return (
+                  <li key={g.id}>
+                    <div
+                      className="goal-fill"
+                      style={{ width: `${pct}%` }}
+                      aria-hidden
+                    />
+                    <div className="goal-copy">
+                      <strong>{g.name}</strong>
+                      <span>
+                        {formatMoney(g.currentAmount)} of{" "}
+                        {formatMoney(g.targetAmount)}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </RailBlock>
 
           <RailBlock title="Recent transactions">
             <ul className="tx">
-              {household.recentTransactions.map((t) => (
-                <li key={t.id}>
-                  <div>
-                    <strong>{t.merchant}</strong>
-                    <span>
-                      {t.postedAt} · {t.category}
-                    </span>
-                  </div>
-                  <em>{formatMoney(t.amount)}</em>
-                </li>
-              ))}
+              {household.recentTransactions.map((t) => {
+                const negative = Number(t.amount) < 0;
+                return (
+                  <li key={t.id}>
+                    <div>
+                      <strong>{t.merchant}</strong>
+                      <span>
+                        {t.postedAt} · {t.category}
+                      </span>
+                    </div>
+                    <em className={negative ? "amount debit" : "amount"}>
+                      {formatMoney(t.amount)}
+                    </em>
+                  </li>
+                );
+              })}
             </ul>
           </RailBlock>
         </aside>
