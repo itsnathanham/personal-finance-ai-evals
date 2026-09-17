@@ -90,23 +90,7 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     outputPerMTok: 50,
   },
 
-  // Google — current Gemini text/chat models (stable + still-listed preview chat)
-  {
-    id: "gemini-2.5-flash-lite",
-    label: "Gemini 2.5 Flash-Lite",
-    provider: "google",
-    description: "Fastest / cheapest Gemini 2.5 for high-throughput tasks",
-    inputPerMTok: 0.1,
-    outputPerMTok: 0.4,
-  },
-  {
-    id: "gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
-    provider: "google",
-    description: "Gemini 2.5 price-performance with reasoning",
-    inputPerMTok: 0.3,
-    outputPerMTok: 2.5,
-  },
+  // Google — current Gemini text/chat models available to new API keys
   {
     id: "gemini-3.1-flash-lite",
     label: "Gemini 3.1 Flash-Lite",
@@ -154,14 +138,6 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     description: "Most intelligent Gemini Flash — long-horizon agents",
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,
-  },
-  {
-    id: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro",
-    provider: "google",
-    description: "Gemini 2.5 advanced reasoning and coding",
-    inputPerMTok: 1.25,
-    outputPerMTok: 10,
   },
   {
     id: "gemini-3.5-flash",
