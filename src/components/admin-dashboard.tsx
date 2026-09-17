@@ -353,7 +353,8 @@ export function AdminDashboard({
             Only providers with an API key are selectable. Add{" "}
             <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, and/or{" "}
             <code>GOOGLE_GENERATIVE_AI_API_KEY</code> in{" "}
-            <code>.env.local</code> / Vercel env (never commit secrets).
+            <code>.env.local</code> / Vercel env for <strong>Preview and
+            Production</strong> (never commit secrets), then redeploy.
           </p>
           {(["anthropic", "openai", "google"] as const).map((provider) => {
             const models = catalog.models.filter((m) => m.provider === provider);
