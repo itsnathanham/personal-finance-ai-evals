@@ -5,10 +5,16 @@ import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { DEMO_HOUSEHOLD_ID } from "@/db/seed-data";
 import { estimateCostUsd, roundCostUsd } from "@/lib/models/pricing";
 
+export type EvalToolCallTrace = {
+  toolName: string;
+  args?: unknown;
+  output?: unknown;
+};
+
 export type EvalCoreResult = {
   output: string;
   toolsUsed: string[];
-  toolResults: unknown[];
+  toolResults: EvalToolCallTrace[];
   finishReason: string;
   modelId: string;
   refused?: boolean;
@@ -51,7 +57,7 @@ export async function runCopilotEval(options: {
 
   const tools = createFinanceTools(householdId) as ToolSet;
   const toolsUsed: string[] = [];
-  const toolResults: unknown[] = [];
+  const toolResults: EvalToolCallTrace[] = [];
 
   const result = await generateText({
     model: getModel(modelId),
@@ -67,6 +73,7 @@ export async function runCopilotEval(options: {
       for (const tr of stepResults ?? []) {
         toolResults.push({
           toolName: tr.toolName,
+          args: "input" in tr ? tr.input : undefined,
           output: "output" in tr ? tr.output : undefined,
         });
       }

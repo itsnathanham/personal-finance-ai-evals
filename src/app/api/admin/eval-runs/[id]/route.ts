@@ -57,6 +57,7 @@ export async function GET(
         prompt: c.prompt,
         output: c.output,
         toolsUsed: c.toolsUsedJson ? JSON.parse(c.toolsUsedJson) : [],
+        toolResults: c.toolResultsJson ? JSON.parse(c.toolResultsJson) : [],
         pass: c.pass,
         failReasons: c.failReasonsJson ? JSON.parse(c.failReasonsJson) : [],
         latencyMs: c.latencyMs,

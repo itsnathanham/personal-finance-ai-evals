@@ -45,6 +45,11 @@ type RunDetail = {
     prompt: string;
     output: string | null;
     toolsUsed: string[];
+    toolResults?: Array<{
+      toolName: string;
+      args?: unknown;
+      output?: unknown;
+    }>;
     pass: boolean | null;
     failReasons: string[];
     latencyMs: number | null;
@@ -388,6 +393,16 @@ export function AdminRunDetail({ runId }: { runId: string }) {
                     <strong>Tools</strong>:{" "}
                     {c.toolsUsed.length ? c.toolsUsed.join(", ") : "none"}
                   </p>
+                  {(c.toolResults?.length ?? 0) > 0 && (
+                    <>
+                      <p>
+                        <strong>Tool calls</strong>
+                      </p>
+                      <pre>
+                        {JSON.stringify(c.toolResults, null, 2)}
+                      </pre>
+                    </>
+                  )}
                   <p>
                     <strong>Usage</strong>:{" "}
                     {formatTokens(c.inputTokens)} in /{" "}

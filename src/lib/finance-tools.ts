@@ -5,6 +5,68 @@ import { getDb } from "@/db";
 import { accounts, auditEvents, budgets, goals, transactions } from "@/db/schema";
 import { DEMO_MONTH } from "@/db/seed-data";
 
+const MONTH_NAME_TO_NUM: Record<string, string> = {
+  january: "01",
+  jan: "01",
+  february: "02",
+  feb: "02",
+  march: "03",
+  mar: "03",
+  april: "04",
+  apr: "04",
+  may: "05",
+  june: "06",
+  jun: "06",
+  july: "07",
+  jul: "07",
+  august: "08",
+  aug: "08",
+  september: "09",
+  sep: "09",
+  sept: "09",
+  october: "10",
+  oct: "10",
+  november: "11",
+  nov: "11",
+  december: "12",
+  dec: "12",
+};
+
+/** Normalize model-supplied month strings to YYYY-MM (demo default when empty). */
+export function normalizeBudgetMonth(month: string | undefined): string {
+  if (!month?.trim()) return DEMO_MONTH;
+  const raw = month.trim();
+  if (/^\d{4}-\d{2}$/.test(raw)) return raw;
+
+  const numbered = raw.match(/^(\d{4})[/.](\d{1,2})$/);
+  if (numbered) {
+    const mm = numbered[2].padStart(2, "0");
+    if (Number(mm) >= 1 && Number(mm) <= 12) return `${numbered[1]}-${mm}`;
+  }
+
+  const nameYear = raw.match(/^([A-Za-z]+)\s*,?\s*(\d{4})$/);
+  if (nameYear) {
+    const mm = MONTH_NAME_TO_NUM[nameYear[1].toLowerCase()];
+    if (mm) return `${nameYear[2]}-${mm}`;
+  }
+
+  const yearName = raw.match(/^(\d{4})\s+([A-Za-z]+)$/);
+  if (yearName) {
+    const mm = MONTH_NAME_TO_NUM[yearName[2].toLowerCase()];
+    if (mm) return `${yearName[1]}-${mm}`;
+  }
+
+  return raw;
+}
+
+/** Lowercase category slugs so "Dining" matches seed data "dining". */
+export function normalizeBudgetCategory(
+  category: string | undefined,
+): string | undefined {
+  if (!category?.trim()) return undefined;
+  return category.trim().toLowerCase();
+}
+
 function money(value: string | number | null | undefined): string {
   const n = Number(value ?? 0);
   return n.toFixed(2);
@@ -167,17 +229,21 @@ export function createFinanceTools(householdId: string) {
 
     get_budget_status: tool({
       description:
-        "Compare category spend vs budget limits for a month (YYYY-MM). Defaults to 2026-06 demo month.",
+        "Compare category spend vs budget limits for a month. Accepts YYYY-MM or names like 'June 2026'. Defaults to 2026-06 demo month.",
       inputSchema: z.object({
         month: z
           .string()
           .optional()
-          .describe("Month as YYYY-MM. Defaults to 2026-06."),
-        category: z.string().optional(),
+          .describe("Month as YYYY-MM or 'June 2026'. Defaults to 2026-06."),
+        category: z
+          .string()
+          .optional()
+          .describe("Category slug such as dining, groceries, transport."),
       }),
       execute: async ({ month, category }) => {
         const started = Date.now();
-        const m = month ?? DEMO_MONTH;
+        const m = normalizeBudgetMonth(month);
+        const categoryFilter = normalizeBudgetCategory(category);
         const startDate = `${m}-01`;
         const endDate = `${m}-31`;
         const db = await getDb();
@@ -186,7 +252,9 @@ export function createFinanceTools(householdId: string) {
           eq(budgets.householdId, householdId),
           eq(budgets.month, m),
         ];
-        if (category) budgetFilters.push(eq(budgets.category, category));
+        if (categoryFilter) {
+          budgetFilters.push(eq(budgets.category, categoryFilter));
+        }
 
         const budgetRows = await db
           .select()
@@ -225,7 +293,7 @@ export function createFinanceTools(householdId: string) {
         await logAudit(
           householdId,
           "get_budget_status",
-          { month: m, category },
+          { month: m, category: categoryFilter, rawMonth: month, rawCategory: category },
           started,
         );
         return { month: m, budgets: status };

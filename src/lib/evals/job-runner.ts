@@ -19,6 +19,12 @@ export type EvalJobItem = {
   modelId: string;
 };
 
+export type PersistedToolCallTrace = {
+  toolName: string;
+  args?: unknown;
+  output?: unknown;
+};
+
 export type PersistedCaseResult = {
   suiteId: string;
   caseId: string;
@@ -27,6 +33,7 @@ export type PersistedCaseResult = {
   prompt: string;
   output: string | null;
   toolsUsed: string[];
+  toolResults?: PersistedToolCallTrace[];
   pass: boolean;
   failReasons: string[];
   latencyMs: number | null;
@@ -107,6 +114,7 @@ export async function persistCompletedRun(input: {
         prompt: row.prompt,
         output: row.output,
         toolsUsedJson: JSON.stringify(row.toolsUsed),
+        toolResultsJson: JSON.stringify(row.toolResults ?? []),
         pass: row.pass,
         failReasonsJson: JSON.stringify(row.failReasons),
         latencyMs: row.latencyMs,
