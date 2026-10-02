@@ -936,6 +936,39 @@ button.ghost.danger-text {
   border-color: rgba(126, 200, 176, 0.45);
 }
 
+.run-detail-status-pills {
+  pointer-events: none;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.run-detail-metrics {
+  margin: 0.75rem 0 0;
+}
+
+.run-detail-secondary-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.15rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--stroke);
+}
+
+.run-detail-secondary-filters .filter-pills {
+  flex-wrap: wrap;
+}
+
 .case-row {
   width: 100%;
   display: flex;
@@ -949,6 +982,17 @@ button.ghost.danger-text {
   padding: 0.7rem 0.75rem;
   cursor: pointer;
   font: inherit;
+}
+
+.case-row-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.case-list {
+  margin-top: 0.55rem;
 }
 
 .case-list li.pass .badge {
