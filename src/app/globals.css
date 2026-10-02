@@ -1021,6 +1021,44 @@ button.ghost.danger-text {
   margin: 0;
 }
 
+.suite-pill-count {
+  margin-left: 0.35rem;
+  opacity: 0.75;
+  font-size: 0.78em;
+}
+
+.run-evals-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--stroke);
+}
+
+.run-evals-actions .admin-estimate {
+  margin: 0;
+}
+
+.run-evals-actions .admin-estimate em {
+  font-style: normal;
+  opacity: 0.85;
+}
+
+.run-evals-actions .primary {
+  margin: 0;
+}
+
+.run-history-card {
+  margin-top: 1rem;
+}
+
+.run-list-compact {
+  margin-top: 0.35rem;
+}
+
 .trends-models-summary {
   border-top: 1px solid var(--stroke);
   padding-top: 0.65rem;
