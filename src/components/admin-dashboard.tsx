@@ -7,6 +7,7 @@ import {
   AdminAuthModal,
   checkAdminSession,
 } from "@/components/admin-auth-modal";
+import { AdminExpandChevron } from "@/components/admin-expand-chevron";
 import {
   formatEstCost,
   formatLatency,
@@ -17,7 +18,13 @@ import {
   type HistoryCaseResult,
   type HistoryRunSummary,
 } from "@/lib/evals/history";
+import { mapPool, sleep } from "@/lib/evals/pool";
 import { buildRunSummary } from "@/lib/models/pricing";
+import {
+  PROVIDER_ORDER,
+  providerLabel,
+  type ModelProvider,
+} from "@/lib/models/registry";
 
 type CatalogCase = {
   id: string;
@@ -30,7 +37,7 @@ export type Catalog = {
     id: string;
     label: string;
     description: string;
-    provider: "anthropic" | "openai" | "google";
+    provider: ModelProvider;
     configured: boolean;
   }>;
   suites: Array<{
@@ -45,18 +52,29 @@ export type Catalog = {
 type RunSummary = HistoryRunSummary;
 type CaseResult = HistoryCaseResult;
 
-const CASE_GAP_MS = 500;
-const PROVIDER_SWITCH_GAP_MS = 900;
+type EvalJob = {
+  suiteId: string;
+  suiteName: string;
+  caseId: string;
+  description: string;
+  prompt: string;
+  modelId: string;
+};
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const EVAL_CONCURRENCY = 4;
+const RETRY_MAX = 4;
 
-function providerOf(modelId: string): string {
-  if (modelId.startsWith("claude")) return "anthropic";
-  if (modelId.startsWith("gpt") || modelId.startsWith("o")) return "openai";
-  if (modelId.startsWith("gemini")) return "google";
-  return "other";
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt < RETRY_MAX; attempt++) {
+    last = await fetch(input, init);
+    if (last.status !== 429) return last;
+    await sleep(Math.min(800 * 2 ** attempt, 8_000));
+  }
+  return last!;
 }
 
 export function AdminDashboard({
@@ -82,7 +100,13 @@ export function AdminDashboard({
   const [modelsOpen, setModelsOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState({
+  const [progress, setProgress] = useState<{
+    completed: number;
+    total: number;
+    passed: number;
+    failed: number;
+    label: string;
+  }>({
     completed: 0,
     total: 0,
     passed: 0,
@@ -101,7 +125,8 @@ export function AdminDashboard({
 
   useEffect(() => {
     setRuns(mergeRunSummaries(initialRuns));
-  }, [initialRuns]);
+    void refreshRuns();
+  }, [initialRuns, refreshRuns]);
 
   function toggle(list: string[], id: string, setter: (v: string[]) => void) {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -152,7 +177,7 @@ export function AdminDashboard({
 
   function selectLatestPerProvider() {
     const picks: string[] = [];
-    for (const provider of ["anthropic", "openai", "google"] as const) {
+    for (const provider of PROVIDER_ORDER) {
       const newest = configuredModels.find((m) => m.provider === provider);
       if (newest) picks.push(newest.id);
     }
@@ -179,14 +204,7 @@ export function AdminDashboard({
     setRunning(true);
     setError(null);
 
-    const jobs: Array<{
-      suiteId: string;
-      suiteName: string;
-      caseId: string;
-      description: string;
-      prompt: string;
-      modelId: string;
-    }> = [];
+    const jobs: EvalJob[] = [];
 
     for (const modelId of modelIds) {
       for (const suite of catalog.suites.filter((s) => suiteIds.includes(s.id))) {
@@ -204,41 +222,29 @@ export function AdminDashboard({
     }
 
     const startedAt = new Date().toISOString();
-    const results: CaseResult[] = [];
+    const results: CaseResult[] = new Array(jobs.length);
     let passed = 0;
     let failed = 0;
     let errors = 0;
+    let completed = 0;
 
     setProgress({
       completed: 0,
       total: jobs.length,
       passed: 0,
       failed: 0,
-      label: "Starting…",
+      label: `Starting ${jobs.length} cases (${EVAL_CONCURRENCY} at a time)…`,
     });
 
     try {
-      for (let i = 0; i < jobs.length; i++) {
-        const job = jobs[i]!;
-        const prev = jobs[i - 1];
-        if (prev) {
-          const gap =
-            providerOf(prev.modelId) === providerOf(job.modelId)
-              ? CASE_GAP_MS
-              : PROVIDER_SWITCH_GAP_MS;
-          await sleep(gap);
-        }
-
-        setProgress({
-          completed: i,
-          total: jobs.length,
-          passed,
-          failed,
+      await mapPool(jobs, EVAL_CONCURRENCY, async (job, i) => {
+        setProgress((prev) => ({
+          ...prev,
           label: `${job.suiteName} · ${job.description} · ${job.modelId}`,
-        });
+        }));
 
         try {
-          const evalRes = await fetch("/api/eval", {
+          const evalRes = await fetchWithRetry("/api/eval", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -252,7 +258,7 @@ export function AdminDashboard({
             throw new Error(evalJson.error ?? "Eval request failed");
           }
 
-          const gradeRes = await fetch("/api/admin/grade", {
+          const gradeRes = await fetchWithRetry("/api/admin/grade", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ caseId: job.caseId, result: evalJson }),
@@ -260,12 +266,15 @@ export function AdminDashboard({
           if (gradeRes.status === 401) {
             throw new Error("Unauthorized — sign in to grade eval results");
           }
+          if (!gradeRes.ok) {
+            throw new Error("Grade request failed");
+          }
           const gradeJson = await gradeRes.json();
           const pass = Boolean(gradeJson.pass);
           if (pass) passed += 1;
           else failed += 1;
 
-          results.push({
+          results[i] = {
             id: `case_${i}_${Date.now()}`,
             suiteId: job.suiteId,
             caseId: job.caseId,
@@ -283,11 +292,11 @@ export function AdminDashboard({
             totalTokens: evalJson.totalTokens ?? null,
             estimatedCostUsd: evalJson.estimatedCostUsd ?? null,
             errorMessage: null,
-          });
+          };
         } catch (err) {
           errors += 1;
           failed += 1;
-          results.push({
+          results[i] = {
             id: `case_${i}_${Date.now()}`,
             suiteId: job.suiteId,
             caseId: job.caseId,
@@ -305,17 +314,20 @@ export function AdminDashboard({
             totalTokens: null,
             estimatedCostUsd: null,
             errorMessage: err instanceof Error ? err.message : String(err),
-          });
+          };
         }
 
+        completed += 1;
         setProgress({
-          completed: i + 1,
+          completed,
           total: jobs.length,
           passed,
           failed,
           label: `${job.suiteName} · ${job.description} · ${job.modelId}`,
         });
-      }
+
+        return results[i]!;
+      });
 
       const finishedAt = new Date().toISOString();
       const summary = buildRunSummary(results);
@@ -449,28 +461,7 @@ export function AdminDashboard({
               <strong>Models</strong>
               <em>{modelSummaryBits.join(" · ")}</em>
             </span>
-            <span className="trends-models-chevron" aria-hidden>
-              <span className="trends-models-chevron-label">
-                {modelsOpen ? "Collapse" : "Expand"}
-              </span>
-              <svg
-                className="trends-models-chevron-icon"
-                viewBox="0 0 16 16"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {modelsOpen ? (
-                  <path d="M3 10.5 8 5.5l5 5" />
-                ) : (
-                  <path d="M3 5.5 8 10.5l5-5" />
-                )}
-              </svg>
-            </span>
+            <AdminExpandChevron open={modelsOpen} />
           </button>
           {!modelsOpen && selectedModels.length > 0 && (
             <p className="trends-models-inline muted">
@@ -501,19 +492,13 @@ export function AdminDashboard({
               </button>
             </div>
             <div className="trends-provider-columns">
-              {(["anthropic", "openai", "google"] as const).map((provider) => {
+              {PROVIDER_ORDER.map((provider) => {
                 const models = catalog.models.filter(
                   (m) => m.provider === provider,
                 );
                 if (models.length === 0) return null;
                 const configured = models.filter((m) => m.configured);
                 const missing = models.filter((m) => !m.configured);
-                const title =
-                  provider === "anthropic"
-                    ? "Anthropic"
-                    : provider === "openai"
-                      ? "OpenAI"
-                      : "Google Gemini";
                 const envHint =
                   provider === "anthropic"
                     ? "ANTHROPIC_API_KEY"
@@ -523,7 +508,7 @@ export function AdminDashboard({
                 return (
                   <div key={provider} className="model-provider-block">
                     <h4>
-                      {title}
+                      {providerLabel(provider)}
                       <span className="model-provider-count">
                         {
                           configured.filter((m) => modelIds.includes(m.id))

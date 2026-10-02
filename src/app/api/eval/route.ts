@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const evalLimit = Number(process.env.EVAL_RATE_LIMIT_PER_HOUR ?? 2000);
+  const evalLimit = Number(process.env.EVAL_RATE_LIMIT_PER_HOUR ?? 10000);
   const rl = rateLimit(`eval:${clientKey(req)}`, evalLimit);
   if (!rl.ok) {
     return Response.json({ error: "Rate limit exceeded" }, { status: 429 });

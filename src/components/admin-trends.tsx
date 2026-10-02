@@ -1,21 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  formatEstCost,
-  formatLatency,
-} from "@/lib/evals/format-metrics";
+import { AdminExpandChevron } from "@/components/admin-expand-chevron";
 import {
   mergeRunSummaries,
   type HistoryRunSummary,
@@ -26,13 +14,26 @@ import {
   type SuiteFilter,
 } from "@/lib/evals/trends";
 import {
+  PROVIDER_ORDER,
   compareModelsByReleaseDesc,
   getModelLabel,
   getModelProvider,
+  providerLabel,
   type ModelProvider,
 } from "@/lib/models/registry";
 
-const CHART_COLORS = ["#7ec8b0", "#e8a87c", "#8aa4d4", "#d4a5c9", "#c4d47a"];
+const TrendChartsPanel = dynamic(
+  () =>
+    import("@/components/admin-trend-charts").then((m) => m.TrendChartsPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <section className="admin-card">
+        <p className="muted">Loading charts…</p>
+      </section>
+    ),
+  },
+);
 
 type CatalogModels = Array<{
   id: string;
@@ -49,134 +50,6 @@ type FilterModel = {
   configured: boolean;
   retired: boolean;
 };
-
-function shortTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function providerTitle(provider: ModelProvider) {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "openai":
-      return "OpenAI";
-    case "google":
-      return "Google Gemini";
-    default: {
-      const _exhaustive: never = provider;
-      return _exhaustive;
-    }
-  }
-}
-
-function buildChartRows(
-  series: ReturnType<typeof buildTrendSeries>["series"],
-  metric: "passRate" | "failRate" | "estimatedCostUsd" | "avgLatencyMs",
-) {
-  const times = new Set<string>();
-  for (const s of series) {
-    for (const p of s.points) times.add(p.at);
-  }
-  const sorted = [...times].sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime(),
-  );
-
-  return sorted.map((at) => {
-    const row: Record<string, string | number | null> = {
-      at,
-      label: shortTime(at),
-    };
-    for (const s of series) {
-      const point = s.points.find((p) => p.at === at);
-      row[s.modelId] = point ? point[metric] : null;
-    }
-    return row;
-  });
-}
-
-function TrendChart({
-  title,
-  series,
-  metric,
-  yFormatter,
-  labelFor,
-}: {
-  title: string;
-  series: ReturnType<typeof buildTrendSeries>["series"];
-  metric: "passRate" | "failRate" | "estimatedCostUsd" | "avgLatencyMs";
-  yFormatter: (v: number) => string;
-  labelFor: (modelId: string) => string;
-}) {
-  const data = useMemo(
-    () => buildChartRows(series, metric),
-    [series, metric],
-  );
-
-  if (series.every((s) => s.points.length === 0)) {
-    return (
-      <div className="trend-chart admin-card">
-        <h3>{title}</h3>
-        <p className="muted">No points for this filter.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="trend-chart admin-card">
-      <h3>{title}</h3>
-      <div className="trend-chart-body">
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: "var(--muted)", fontSize: 11 }}
-              tickLine={false}
-              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-            />
-            <YAxis
-              tick={{ fill: "var(--muted)", fontSize: 11 }}
-              tickLine={false}
-              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-              tickFormatter={yFormatter}
-              width={56}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--panel)",
-                border: "1px solid var(--stroke)",
-                borderRadius: 8,
-              }}
-              labelStyle={{ color: "var(--muted)" }}
-              formatter={(value) =>
-                typeof value === "number" ? yFormatter(value) : String(value ?? "—")
-              }
-            />
-            <Legend />
-            {series.map((s, i) => (
-              <Line
-                key={s.modelId}
-                type="monotone"
-                dataKey={s.modelId}
-                name={labelFor(s.modelId)}
-                stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                connectNulls
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
 
 function modelsWithHistory(runs: HistoryRunSummary[]): Set<string> {
   const ids = new Set<string>();
@@ -221,9 +94,9 @@ function buildFilterModels(
     });
   }
 
-  const order: ModelProvider[] = ["anthropic", "openai", "google"];
   return [...byId.values()].sort((a, b) => {
-    const pi = order.indexOf(a.provider) - order.indexOf(b.provider);
+    const pi =
+      PROVIDER_ORDER.indexOf(a.provider) - PROVIDER_ORDER.indexOf(b.provider);
     if (pi !== 0) return pi;
     if (a.retired !== b.retired) return a.retired ? 1 : -1;
     return compareModelsByReleaseDesc(a.id, b.id);
@@ -262,15 +135,40 @@ export function AdminTrends({
   const [defaultsReady, setDefaultsReady] = useState(false);
 
   useEffect(() => {
-    const normalized = initialRuns.map((r) => ({
-      ...r,
-      summary: normalizeSummary(r.summary),
-    }));
-    const merged = mergeRunSummaries(normalized);
-    setRuns(merged);
-    const filterModels = buildFilterModels(models, merged);
-    setModelIds(defaultSelectedModelIds(filterModels, merged));
-    setDefaultsReady(true);
+    let cancelled = false;
+
+    async function load() {
+      const normalized = initialRuns.map((r) => ({
+        ...r,
+        summary: normalizeSummary(r.summary),
+      }));
+
+      let serverRuns: HistoryRunSummary[] = [];
+      try {
+        const res = await fetch("/api/admin/eval-runs?limit=80");
+        if (res.ok) {
+          const json = (await res.json()) as { runs?: HistoryRunSummary[] };
+          serverRuns = (json.runs ?? []).map((r) => ({
+            ...r,
+            summary: normalizeSummary(r.summary),
+          }));
+        }
+      } catch {
+        serverRuns = [];
+      }
+
+      if (cancelled) return;
+      const merged = mergeRunSummaries([...normalized, ...serverRuns]);
+      setRuns(merged);
+      const nextFilters = buildFilterModels(models, merged);
+      setModelIds(defaultSelectedModelIds(nextFilters, merged));
+      setDefaultsReady(true);
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [initialRuns, models]);
 
   const filterModels = useMemo(
@@ -389,28 +287,7 @@ export function AdminTrends({
               <strong>Models</strong>
               <em>{summaryBits.join(" · ")}</em>
             </span>
-            <span className="trends-models-chevron" aria-hidden>
-              <span className="trends-models-chevron-label">
-                {modelsOpen ? "Collapse" : "Expand"}
-              </span>
-              <svg
-                className="trends-models-chevron-icon"
-                viewBox="0 0 16 16"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {modelsOpen ? (
-                  <path d="M3 10.5 8 5.5l5 5" />
-                ) : (
-                  <path d="M3 5.5 8 10.5l5-5" />
-                )}
-              </svg>
-            </span>
+            <AdminExpandChevron open={modelsOpen} />
           </button>
           {!modelsOpen && selectedModels.length > 0 && (
             <p className="trends-models-inline muted">
@@ -433,13 +310,13 @@ export function AdminTrends({
               </button>
             </div>
             <div className="trends-provider-columns">
-              {(["anthropic", "openai", "google"] as const).map((provider) => {
+              {PROVIDER_ORDER.map((provider) => {
                 const group = filterModels.filter((m) => m.provider === provider);
                 if (group.length === 0) return null;
                 return (
                   <div key={provider} className="model-provider-block">
                     <h4>
-                      {providerTitle(provider)}
+                      {providerLabel(provider)}
                       <span className="model-provider-count">
                         {
                           group.filter((m) => modelIds.includes(m.id)).length
@@ -513,67 +390,7 @@ export function AdminTrends({
           </p>
         </section>
       ) : (
-        <>
-          <div className="metric-row">
-            <div className="metric">
-              <span>Avg pass</span>
-              <strong>
-                {kpis.avgPassRate != null ? `${kpis.avgPassRate}%` : "—"}
-              </strong>
-            </div>
-            <div className="metric">
-              <span>Avg fail</span>
-              <strong>
-                {kpis.avgFailRate != null ? `${kpis.avgFailRate}%` : "—"}
-              </strong>
-            </div>
-            <div className="metric">
-              <span>Total est. cost</span>
-              <strong>{formatEstCost(kpis.totalEstimatedCostUsd)}</strong>
-            </div>
-            <div className="metric">
-              <span>Avg latency</span>
-              <strong>{formatLatency(kpis.avgLatencyMs)}</strong>
-            </div>
-            <div className="metric">
-              <span>Runs / points</span>
-              <strong>
-                {kpis.runCount}/{kpis.pointCount}
-              </strong>
-            </div>
-          </div>
-
-          <div className="trends-grid">
-            <TrendChart
-              title="Pass rate %"
-              series={series}
-              metric="passRate"
-              yFormatter={(v) => `${v}%`}
-              labelFor={labelFor}
-            />
-            <TrendChart
-              title="Fail rate %"
-              series={series}
-              metric="failRate"
-              yFormatter={(v) => `${v}%`}
-              labelFor={labelFor}
-            />
-            <TrendChart
-              title="Est. cost (USD)"
-              series={series}
-              metric="estimatedCostUsd"
-              yFormatter={(v) => formatEstCost(v)}
-              labelFor={labelFor}
-            />
-            <TrendChart
-              title="Avg latency"
-              series={series}
-              metric="avgLatencyMs"
-              yFormatter={(v) => formatLatency(v)}
-              labelFor={labelFor}
-            />
-          </div>
-        </>
+        <TrendChartsPanel series={series} kpis={kpis} labelFor={labelFor} />
       )}
     </div>
   );

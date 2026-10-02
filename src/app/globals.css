@@ -928,12 +928,43 @@ button.ghost.danger-text {
 
 .filter-pills {
   display: flex;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .filter-pills button.active {
   background: rgba(126, 200, 176, 0.18);
   border-color: rgba(126, 200, 176, 0.45);
+}
+
+.run-detail-status-pills {
+  pointer-events: none;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.run-detail-metrics {
+  margin: 0.75rem 0 0;
+}
+
+.run-detail-secondary-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.25rem 0 0.25rem;
+  padding: 0.7rem 0.15rem 0.55rem;
+  border-top: 1px solid var(--stroke);
 }
 
 .case-row {
@@ -949,6 +980,17 @@ button.ghost.danger-text {
   padding: 0.7rem 0.75rem;
   cursor: pointer;
   font: inherit;
+}
+
+.case-row-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.case-list {
+  margin-top: 0.55rem;
 }
 
 .case-list li.pass .badge {
@@ -1019,6 +1061,7 @@ button.ghost.danger-text {
 
 .trends-suite-pills {
   margin: 0;
+  max-width: 100%;
 }
 
 .suite-pill-count {
@@ -1199,10 +1242,94 @@ button.ghost.danger-text {
 }
 
 @media (max-width: 960px) {
+  .admin-shell {
+    padding: 1rem 0.9rem 2rem;
+  }
+
+  .admin-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .admin-top-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
   .admin-grid,
   .metric-row,
   .trends-grid,
   .trends-provider-columns {
     grid-template-columns: 1fr;
+  }
+
+  .trends-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .trends-suite-pills,
+  .filter-pills {
+    width: 100%;
+  }
+
+  .filter-pills button,
+  .status-pill,
+  .trends-models-actions button {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .run-detail-secondary-filters {
+    padding: 0.75rem 0.2rem 0.6rem;
+    gap: 0.65rem;
+  }
+
+  .run-detail-metrics {
+    margin-top: 0.85rem;
+  }
+
+  .model-compare {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+
+  .model-compare-head,
+  .model-compare-row {
+    min-width: 34rem;
+  }
+
+  .case-row {
+    gap: 0.55rem;
+    padding: 0.65rem 0.7rem;
+  }
+
+  .case-main {
+    min-width: 0;
+  }
+
+  .case-main strong,
+  .case-main em {
+    overflow-wrap: anywhere;
+  }
+
+  .trends-models-toggle {
+    align-items: flex-start;
+  }
+
+  .trends-models-chevron-label {
+    display: none;
+  }
+
+  .run-evals-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .run-evals-actions .primary {
+    width: 100%;
   }
 }

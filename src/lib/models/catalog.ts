@@ -6,6 +6,7 @@ import {
 import {
   compareModelsByReleaseDesc,
   MODEL_REGISTRY,
+  PROVIDER_ORDER,
   type ModelDefinition,
   type ModelProvider,
 } from "@/lib/models/registry";
@@ -18,16 +19,6 @@ export type CatalogModel = {
   configured: boolean;
 };
 
-const PROVIDER_LABEL: Record<ModelProvider, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  google: "Google",
-};
-
-export function providerLabel(provider: ModelProvider): string {
-  return PROVIDER_LABEL[provider];
-}
-
 export function toCatalogModel(m: ModelDefinition): CatalogModel {
   return {
     id: m.id,
@@ -37,8 +28,6 @@ export function toCatalogModel(m: ModelDefinition): CatalogModel {
     configured: isProviderConfigured(m.provider),
   };
 }
-
-const PROVIDER_ORDER: ModelProvider[] = ["anthropic", "openai", "google"];
 
 function byProviderThenReleaseDesc(a: ModelDefinition, b: ModelDefinition) {
   const pi = PROVIDER_ORDER.indexOf(a.provider) - PROVIDER_ORDER.indexOf(b.provider);

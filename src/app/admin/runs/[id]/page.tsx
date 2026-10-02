@@ -1,7 +1,5 @@
 import { AdminRunDetail } from "@/components/admin-run-detail";
 
-export const dynamic = "force-dynamic";
-
 export default async function AdminRunPage({
   params,
 }: {
