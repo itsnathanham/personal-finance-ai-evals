@@ -138,6 +138,7 @@ export const evalCaseResults = pgTable(
     prompt: text("prompt").notNull(),
     output: text("output"),
     toolsUsedJson: text("tools_used_json"),
+    toolResultsJson: text("tool_results_json"),
     pass: boolean("pass"),
     failReasonsJson: text("fail_reasons_json"),
     latencyMs: integer("latency_ms"),

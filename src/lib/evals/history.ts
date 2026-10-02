@@ -18,6 +18,12 @@ export type HistoryRunSummary = {
   summary?: RunSummaryMetrics | null;
 };
 
+export type HistoryToolCallTrace = {
+  toolName: string;
+  args?: unknown;
+  output?: unknown;
+};
+
 export type HistoryCaseResult = {
   id: string;
   suiteId: string;
@@ -27,6 +33,7 @@ export type HistoryCaseResult = {
   prompt: string;
   output: string | null;
   toolsUsed: string[];
+  toolResults?: HistoryToolCallTrace[];
   pass: boolean;
   failReasons: string[];
   latencyMs: number | null;

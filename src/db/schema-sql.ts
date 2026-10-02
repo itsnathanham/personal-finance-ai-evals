@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS eval_case_results (
   prompt text NOT NULL,
   output text,
   tools_used_json text,
+  tool_results_json text,
   pass boolean,
   fail_reasons_json text,
   latency_ms integer,
@@ -97,4 +98,5 @@ CREATE INDEX IF NOT EXISTS tx_posted_idx ON transactions(posted_at);
 CREATE INDEX IF NOT EXISTS tx_category_idx ON transactions(category);
 CREATE INDEX IF NOT EXISTS budgets_household_month_idx ON budgets(household_id, month);
 CREATE INDEX IF NOT EXISTS eval_case_results_run_idx ON eval_case_results(run_id);
+ALTER TABLE eval_case_results ADD COLUMN IF NOT EXISTS tool_results_json text;
 `;
