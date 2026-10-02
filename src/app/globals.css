@@ -999,6 +999,124 @@ button.ghost.danger-text {
   margin-bottom: 1rem;
 }
 
+.trends-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.65rem;
+}
+
+.trends-filter-main h2 {
+  margin: 0 0 0.25rem;
+}
+
+.trends-filter-help {
+  margin: 0;
+  max-width: 36rem;
+}
+
+.trends-suite-pills {
+  margin: 0;
+}
+
+.trends-models-summary {
+  border-top: 1px solid var(--stroke);
+  padding-top: 0.65rem;
+}
+
+.trends-models-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.15rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.trends-models-toggle span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.trends-models-toggle em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.trends-models-chevron {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.trends-models-inline {
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.trends-models-panel {
+  margin-top: 0.35rem;
+}
+
+.trends-models-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.trends-models-actions button {
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.trends-models-actions button:hover {
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--text) 35%, var(--stroke));
+}
+
+.trends-provider-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.trends-provider-columns .model-provider-block {
+  margin-bottom: 0;
+}
+
+.trends-provider-columns .model-provider-block h4 {
+  margin-top: 0;
+}
+
+.chip-grid-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chip-grid-columns .chip {
+  padding: 0.4rem 0.55rem;
+}
+
+.chip-grid-columns .chip em {
+  font-size: 0.72rem;
+}
+
 .trends-note {
   margin-top: 0.75rem;
 }
@@ -1022,7 +1140,8 @@ button.ghost.danger-text {
 @media (max-width: 960px) {
   .admin-grid,
   .metric-row,
-  .trends-grid {
+  .trends-grid,
+  .trends-provider-columns {
     grid-template-columns: 1fr;
   }
 }
