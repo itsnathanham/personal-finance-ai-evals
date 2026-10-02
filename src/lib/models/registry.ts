@@ -5,13 +5,16 @@ export type ModelDefinition = {
   label: string;
   provider: ModelProvider;
   description: string;
+  /** Approximate public release / GA date (YYYY-MM-DD) for UI ordering. */
+  releasedAt: string;
   /** Standard list price ($/MTok). Cache/batch discounts ignored. */
   inputPerMTok: number;
   outputPerMTok: number;
 };
 
 /**
- * Current text/chat models for the app + admin eval dashboard.
+ * Active text/chat models for the app + admin eval dashboard.
+ * Prior-gen peers are kept so evals can compare progress over time.
  * Specialized audio/image/video/embedding models are intentionally omitted.
  *
  * Sources:
@@ -19,23 +22,34 @@ export type ModelDefinition = {
  * - https://developers.openai.com/api/docs/models
  * - https://ai.google.dev/gemini-api/docs/models
  *
- * Within each provider: cheaper → more capable so defaults stay cost-safe.
+ * Within each provider: newest release first so current models are easiest to pick.
  */
 export const MODEL_REGISTRY: ModelDefinition[] = [
-  // Anthropic — current Claude lineup
+  // Anthropic — newest first
   {
-    id: "claude-haiku-4-5-20251001",
-    label: "Claude Haiku 4.5",
+    id: "claude-fable-5-1",
+    label: "Claude Fable 5.1",
     provider: "anthropic",
-    description: "Fastest / cheapest Claude — cost and latency baseline",
-    inputPerMTok: 1,
-    outputPerMTok: 5,
+    description: "Highest Claude ceiling — long-horizon reasoning and hard evals",
+    releasedAt: "2026-09-15",
+    inputPerMTok: 10,
+    outputPerMTok: 50,
   },
   {
-    id: "claude-sonnet-5",
-    label: "Claude Sonnet 5",
+    id: "claude-opus-5-5",
+    label: "Claude Opus 5.5",
     provider: "anthropic",
-    description: "Best Claude balance of speed and intelligence",
+    description: "Current Opus — long-running agentic coding and knowledge work",
+    releasedAt: "2026-09-10",
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+  },
+  {
+    id: "claude-sonnet-5-5",
+    label: "Claude Sonnet 5.5",
+    provider: "anthropic",
+    description: "Current Sonnet — best Claude balance of speed and intelligence",
+    releasedAt: "2026-09-08",
     inputPerMTok: 2,
     outputPerMTok: 10,
   },
@@ -43,83 +57,84 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     id: "claude-opus-5",
     label: "Claude Opus 5",
     provider: "anthropic",
-    description: "Strong default for complex agentic and enterprise work",
+    description: "Prior-gen Opus — baseline vs Opus 5.5",
+    releasedAt: "2026-05-20",
     inputPerMTok: 5,
     outputPerMTok: 25,
   },
   {
-    id: "claude-fable-5-1",
-    label: "Claude Fable 5.1",
+    id: "claude-sonnet-5",
+    label: "Claude Sonnet 5",
     provider: "anthropic",
-    description: "Highest Claude ceiling — long-horizon reasoning and hard evals",
-    inputPerMTok: 10,
-    outputPerMTok: 50,
+    description: "Prior-gen Sonnet — baseline vs Sonnet 5.5",
+    releasedAt: "2026-05-15",
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+  },
+  {
+    id: "claude-haiku-4-5-20251001",
+    label: "Claude Haiku 4.5",
+    provider: "anthropic",
+    description: "Fastest / cheapest Claude — cost and latency baseline",
+    releasedAt: "2025-10-01",
+    inputPerMTok: 1,
+    outputPerMTok: 5,
   },
 
-  // OpenAI — current flagship text models
-  {
-    id: "gpt-5.6-luna",
-    label: "GPT-5.6 Luna",
-    provider: "openai",
-    description: "Cost-sensitive high-volume OpenAI workloads",
-    inputPerMTok: 0.2,
-    outputPerMTok: 1.2,
-  },
-  {
-    id: "gpt-5.6-terra",
-    label: "GPT-5.6 Terra",
-    provider: "openai",
-    description: "OpenAI balance of intelligence and cost",
-    inputPerMTok: 2,
-    outputPerMTok: 12,
-  },
-  {
-    id: "gpt-5.6-sol",
-    label: "GPT-5.6 Sol",
-    provider: "openai",
-    description: "OpenAI flagship for complex professional work",
-    inputPerMTok: 4,
-    outputPerMTok: 20,
-  },
+  // OpenAI — newest first
   {
     id: "gpt-6-astra",
     label: "GPT-6 Astra",
     provider: "openai",
     description: "Most capable OpenAI model for hardest end-to-end work",
+    releasedAt: "2026-09-20",
     inputPerMTok: 10,
     outputPerMTok: 50,
   },
+  {
+    id: "gpt-6.1-sol",
+    label: "GPT-6.1 Sol",
+    provider: "openai",
+    description: "Current OpenAI balance — near-Astra at lower cost",
+    releasedAt: "2026-09-18",
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+  },
+  {
+    id: "gpt-6-luna",
+    label: "GPT-6 Luna",
+    provider: "openai",
+    description: "Current efficient OpenAI model for high-volume workloads",
+    releasedAt: "2026-09-16",
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+  },
+  {
+    id: "gpt-5.6-sol",
+    label: "GPT-5.6 Sol",
+    provider: "openai",
+    description: "Prior-gen mid/strong OpenAI — baseline vs GPT-6.1 Sol",
+    releasedAt: "2026-04-10",
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+  },
+  {
+    id: "gpt-5.6-luna",
+    label: "GPT-5.6 Luna",
+    provider: "openai",
+    description: "Prior-gen cheap OpenAI tier — baseline vs GPT-6 Luna",
+    releasedAt: "2026-04-08",
+    inputPerMTok: 0.2,
+    outputPerMTok: 1.2,
+  },
 
-  // Google — current Gemini text/chat models available to new API keys
+  // Google — newest first
   {
-    id: "gemini-3.1-flash-lite",
-    label: "Gemini 3.1 Flash-Lite",
+    id: "gemini-3.8-flash",
+    label: "Gemini 3.8 Flash",
     provider: "google",
-    description: "Cost-efficient Gemini 3.x for high-volume agentic tasks",
-    inputPerMTok: 0.25,
-    outputPerMTok: 1.5,
-  },
-  {
-    id: "gemini-3.5-flash-lite",
-    label: "Gemini 3.5 Flash-Lite",
-    provider: "google",
-    description: "Fast Gemini 3.5 for high-throughput execution",
-    inputPerMTok: 0.3,
-    outputPerMTok: 2.5,
-  },
-  {
-    id: "gemini-3-flash-preview",
-    label: "Gemini 3 Flash (preview)",
-    provider: "google",
-    description: "Legacy Gemini 3 Flash preview baseline",
-    inputPerMTok: 0.5,
-    outputPerMTok: 3,
-  },
-  {
-    id: "gemini-3.6-flash",
-    label: "Gemini 3.6 Flash",
-    provider: "google",
-    description: "Gemini 3.6 balance of speed and multimodal agentic work",
+    description: "Current most intelligent Gemini Flash — long-horizon agents",
+    releasedAt: "2026-09-25",
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,
   },
@@ -127,45 +142,106 @@ export const MODEL_REGISTRY: ModelDefinition[] = [
     id: "gemini-3.7-flash",
     label: "Gemini 3.7 Flash",
     provider: "google",
-    description: "Gemini 3.7 for coding, tool use, and multi-step execution",
+    description: "Prior-gen Flash — baseline vs Gemini 3.8 Flash",
+    releasedAt: "2026-08-15",
     inputPerMTok: 0.75,
     outputPerMTok: 3.75,
   },
   {
-    id: "gemini-3.8-flash",
-    label: "Gemini 3.8 Flash",
+    id: "gemini-3.5-flash-lite",
+    label: "Gemini 3.5 Flash-Lite",
     provider: "google",
-    description: "Most intelligent Gemini Flash — long-horizon agents",
-    inputPerMTok: 0.75,
-    outputPerMTok: 3.75,
-  },
-  {
-    id: "gemini-3.5-flash",
-    label: "Gemini 3.5 Flash",
-    provider: "google",
-    description: "Gemini 3.5 Flash for routine high-throughput workloads",
-    inputPerMTok: 1.5,
-    outputPerMTok: 9,
+    description: "Cheap/fast Gemini for high-throughput execution",
+    releasedAt: "2026-07-01",
+    inputPerMTok: 0.3,
+    outputPerMTok: 2.5,
   },
   {
     id: "gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro (preview)",
     provider: "google",
-    description: "Gemini 3.1 Pro — complex problem-solving and agentic coding",
+    description: "Gemini Pro — complex problem-solving and agentic coding",
+    releasedAt: "2026-06-15",
     inputPerMTok: 2,
     outputPerMTok: 12,
   },
 ];
+
+/**
+ * Labels for models removed from the active picker but still present in
+ * historical eval runs / trends. Keeps charts readable without re-enabling
+ * those IDs for new runs.
+ */
+export const RETIRED_MODEL_META: Record<
+  string,
+  { label: string; provider: ModelProvider; releasedAt: string }
+> = {
+  "gpt-5.6-terra": {
+    label: "GPT-5.6 Terra",
+    provider: "openai",
+    releasedAt: "2026-04-09",
+  },
+  "gemini-3.6-flash": {
+    label: "Gemini 3.6 Flash",
+    provider: "google",
+    releasedAt: "2026-07-20",
+  },
+  "gemini-3.5-flash": {
+    label: "Gemini 3.5 Flash",
+    provider: "google",
+    releasedAt: "2026-06-01",
+  },
+  "gemini-3.1-flash-lite": {
+    label: "Gemini 3.1 Flash-Lite",
+    provider: "google",
+    releasedAt: "2026-05-01",
+  },
+  "gemini-3-flash-preview": {
+    label: "Gemini 3 Flash (preview)",
+    provider: "google",
+    releasedAt: "2026-04-01",
+  },
+};
 
 export const DEFAULT_MODEL_ID =
   process.env.DEFAULT_MODEL ??
   process.env.ANTHROPIC_MODEL ??
   process.env.OPENAI_MODEL ??
   process.env.GOOGLE_MODEL ??
-  "claude-sonnet-5";
+  "claude-sonnet-5-5";
 
 export function getModelDefinition(modelId: string): ModelDefinition | undefined {
   return MODEL_REGISTRY.find((m) => m.id === modelId);
+}
+
+export function getModelLabel(modelId: string): string {
+  return (
+    getModelDefinition(modelId)?.label ??
+    RETIRED_MODEL_META[modelId]?.label ??
+    modelId
+  );
+}
+
+export function getModelProvider(modelId: string): ModelProvider | undefined {
+  return (
+    getModelDefinition(modelId)?.provider ??
+    RETIRED_MODEL_META[modelId]?.provider
+  );
+}
+
+export function getModelReleasedAt(modelId: string): string {
+  return (
+    getModelDefinition(modelId)?.releasedAt ??
+    RETIRED_MODEL_META[modelId]?.releasedAt ??
+    "1970-01-01"
+  );
+}
+
+/** Newest release first. */
+export function compareModelsByReleaseDesc(aId: string, bId: string): number {
+  const byDate = getModelReleasedAt(bId).localeCompare(getModelReleasedAt(aId));
+  if (byDate !== 0) return byDate;
+  return aId.localeCompare(bId);
 }
 
 export function isAllowedModelId(modelId: string): boolean {

@@ -73,9 +73,13 @@ export function AdminDashboard({
   );
   const [suiteIds, setSuiteIds] = useState<string[]>(["goldens"]);
   const [modelIds, setModelIds] = useState<string[]>(() => {
-    const firstConfigured = initialCatalog.models.find((m) => m.configured);
-    return firstConfigured ? [firstConfigured.id] : [];
+    const preferred =
+      initialCatalog.models.find(
+        (m) => m.configured && m.id === "claude-sonnet-5-5",
+      ) ?? initialCatalog.models.find((m) => m.configured);
+    return preferred ? [preferred.id] : [];
   });
+  const [modelsOpen, setModelsOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({
@@ -110,6 +114,50 @@ export function AdminDashboard({
         .reduce((n, s) => n + s.caseCount, 0) * modelIds.length,
     [catalog, suiteIds, modelIds],
   );
+
+  const configuredModels = useMemo(
+    () => catalog.models.filter((m) => m.configured),
+    [catalog.models],
+  );
+
+  const selectedModels = useMemo(
+    () => catalog.models.filter((m) => modelIds.includes(m.id)),
+    [catalog.models, modelIds],
+  );
+
+  const selectedByProvider = useMemo(() => {
+    const counts = { anthropic: 0, openai: 0, google: 0 };
+    for (const m of selectedModels) {
+      if (m.provider in counts) counts[m.provider] += 1;
+    }
+    return counts;
+  }, [selectedModels]);
+
+  const modelSummaryBits = [
+    `${selectedModels.length} selected`,
+    selectedByProvider.anthropic
+      ? `Anthropic ${selectedByProvider.anthropic}`
+      : null,
+    selectedByProvider.openai ? `OpenAI ${selectedByProvider.openai}` : null,
+    selectedByProvider.google ? `Gemini ${selectedByProvider.google}` : null,
+  ].filter(Boolean);
+
+  function selectConfiguredModels() {
+    setModelIds(configuredModels.map((m) => m.id));
+  }
+
+  function clearModels() {
+    setModelIds([]);
+  }
+
+  function selectLatestPerProvider() {
+    const picks: string[] = [];
+    for (const provider of ["anthropic", "openai", "google"] as const) {
+      const newest = configuredModels.find((m) => m.provider === provider);
+      if (newest) picks.push(newest.id);
+    }
+    setModelIds(picks);
+  }
 
   async function requireAuthThen(action: () => void) {
     if (await checkAdminSession()) {
@@ -351,7 +399,7 @@ export function AdminDashboard({
     <div className="admin-shell">
       <header className="admin-top">
         <div>
-          <p className="brand">Eval Admin</p>
+          <p className="brand">Run evals</p>
           <p className="sub">
             Run goldens, policy, red-team, or Promptfoo Finance suites across
             Anthropic, OpenAI, and Gemini models
@@ -363,108 +411,189 @@ export function AdminDashboard({
         </div>
       </header>
 
-      <div className="admin-grid">
-        <section className="admin-card">
-          <h2>New run</h2>
-          <p className="admin-help">
-            Mix Goldens, Policy, Red team, and Promptfoo Finance in one run.
-            Compare pass rate, est. cost, and avg latency across models.
-            Running evals requires the admin password.
-          </p>
-
-          <h3>Suites</h3>
-          <div className="chip-grid">
+      <section className="admin-card trends-filters">
+        <div className="trends-filter-bar">
+          <div className="trends-filter-main">
+            <h2>New run</h2>
+            <p className="admin-help trends-filter-help">
+              Mix suites in one run. Admin password required to execute.
+              Models are newest-first within each provider.
+            </p>
+          </div>
+          <div className="filter-pills trends-suite-pills">
             {catalog.suites.map((suite) => (
-              <label key={suite.id} className="chip">
-                <input
-                  type="checkbox"
-                  checked={suiteIds.includes(suite.id)}
-                  onChange={() => toggle(suiteIds, suite.id, setSuiteIds)}
-                  disabled={running}
-                />
-                <span>
-                  <strong>{suite.name}</strong>
-                  <em>
-                    {suite.caseCount} cases · {suite.description}
-                  </em>
-                </span>
-              </label>
+              <button
+                key={suite.id}
+                type="button"
+                className={suiteIds.includes(suite.id) ? "active" : ""}
+                disabled={running}
+                title={`${suite.caseCount} cases · ${suite.description}`}
+                onClick={() => toggle(suiteIds, suite.id, setSuiteIds)}
+              >
+                {suite.name}
+                <span className="suite-pill-count">{suite.caseCount}</span>
+              </button>
             ))}
           </div>
+        </div>
 
-          <h3>Models</h3>
-          {(["anthropic", "openai", "google"] as const).map((provider) => {
-            const models = catalog.models.filter((m) => m.provider === provider);
-            if (models.length === 0) return null;
-            const configured = models.filter((m) => m.configured);
-            const missing = models.filter((m) => !m.configured);
-            const title =
-              provider === "anthropic"
-                ? "Anthropic"
-                : provider === "openai"
-                  ? "OpenAI"
-                  : "Google Gemini";
-            const envHint =
-              provider === "anthropic"
-                ? "ANTHROPIC_API_KEY"
-                : provider === "openai"
-                  ? "OPENAI_API_KEY"
-                  : "GOOGLE_GENERATIVE_AI_API_KEY";
-            return (
-              <div key={provider} className="model-provider-block">
-                <h4>
-                  {title}
-                  {configured.length > 0 ? (
-                    <span className="model-provider-count">
-                      {configured.length} available
-                    </span>
-                  ) : null}
-                </h4>
-                {configured.length > 0 ? (
-                  <div className="chip-grid">
-                    {configured.map((model) => (
-                      <label key={model.id} className="chip">
-                        <input
-                          type="checkbox"
-                          checked={modelIds.includes(model.id)}
-                          onChange={() =>
-                            toggle(modelIds, model.id, setModelIds)
-                          }
-                          disabled={running}
-                        />
-                        <span>
-                          <strong>{model.label}</strong>
-                          <em>{model.description}</em>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+        <div className="trends-models-summary">
+          <button
+            type="button"
+            className="trends-models-toggle"
+            aria-expanded={modelsOpen}
+            disabled={running}
+            onClick={() => setModelsOpen((open) => !open)}
+          >
+            <span>
+              <strong>Models</strong>
+              <em>{modelSummaryBits.join(" · ")}</em>
+            </span>
+            <span className="trends-models-chevron" aria-hidden>
+              <span className="trends-models-chevron-label">
+                {modelsOpen ? "Collapse" : "Expand"}
+              </span>
+              <svg
+                className="trends-models-chevron-icon"
+                viewBox="0 0 16 16"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {modelsOpen ? (
+                  <path d="M3 10.5 8 5.5l5 5" />
                 ) : (
-                  <p className="admin-help model-provider-missing">
-                    No key — set <code>{envHint}</code> to enable{" "}
-                    {models.length} model{models.length === 1 ? "" : "s"}.
-                  </p>
+                  <path d="M3 5.5 8 10.5l5-5" />
                 )}
-                {missing.length > 0 && configured.length > 0 ? (
-                  <details className="model-provider-collapsed">
-                    <summary>
-                      {missing.length} unavailable (missing {envHint})
-                    </summary>
-                    <ul>
-                      {missing.map((model) => (
-                        <li key={model.id}>{model.label}</li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
-              </div>
-            );
-          })}
+              </svg>
+            </span>
+          </button>
+          {!modelsOpen && selectedModels.length > 0 && (
+            <p className="trends-models-inline muted">
+              {selectedModels.map((m) => m.label).join(" · ")}
+            </p>
+          )}
+        </div>
 
+        {modelsOpen && (
+          <div className="trends-models-panel">
+            <div className="trends-models-actions">
+              <button
+                type="button"
+                disabled={running}
+                onClick={selectLatestPerProvider}
+              >
+                Latest per provider
+              </button>
+              <button
+                type="button"
+                disabled={running}
+                onClick={selectConfiguredModels}
+              >
+                Select all
+              </button>
+              <button type="button" disabled={running} onClick={clearModels}>
+                Clear
+              </button>
+            </div>
+            <div className="trends-provider-columns">
+              {(["anthropic", "openai", "google"] as const).map((provider) => {
+                const models = catalog.models.filter(
+                  (m) => m.provider === provider,
+                );
+                if (models.length === 0) return null;
+                const configured = models.filter((m) => m.configured);
+                const missing = models.filter((m) => !m.configured);
+                const title =
+                  provider === "anthropic"
+                    ? "Anthropic"
+                    : provider === "openai"
+                      ? "OpenAI"
+                      : "Google Gemini";
+                const envHint =
+                  provider === "anthropic"
+                    ? "ANTHROPIC_API_KEY"
+                    : provider === "openai"
+                      ? "OPENAI_API_KEY"
+                      : "GOOGLE_GENERATIVE_AI_API_KEY";
+                return (
+                  <div key={provider} className="model-provider-block">
+                    <h4>
+                      {title}
+                      <span className="model-provider-count">
+                        {
+                          configured.filter((m) => modelIds.includes(m.id))
+                            .length
+                        }
+                        /{configured.length || models.length}
+                      </span>
+                    </h4>
+                    {configured.length > 0 ? (
+                      <div className="chip-grid chip-grid-compact chip-grid-columns">
+                        {configured.map((model) => (
+                          <label
+                            key={model.id}
+                            className="chip"
+                            title={model.description}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={modelIds.includes(model.id)}
+                              onChange={() =>
+                                toggle(modelIds, model.id, setModelIds)
+                              }
+                              disabled={running}
+                            />
+                            <span>
+                              <strong>{model.label}</strong>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="admin-help model-provider-missing">
+                        No key — set <code>{envHint}</code> to enable{" "}
+                        {models.length} model
+                        {models.length === 1 ? "" : "s"}.
+                      </p>
+                    )}
+                    {missing.length > 0 && configured.length > 0 ? (
+                      <details className="model-provider-collapsed">
+                        <summary>
+                          {missing.length} unavailable (missing {envHint})
+                        </summary>
+                        <ul>
+                          {missing.map((model) => (
+                            <li key={model.id}>{model.label}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="run-evals-actions">
           <p className="admin-estimate">
             Estimated cases this run: <strong>{estimatedCases}</strong>
+            {suiteIds.length > 0 ? (
+              <em>
+                {" "}
+                ·{" "}
+                {catalog.suites
+                  .filter((s) => suiteIds.includes(s.id))
+                  .map((s) => s.name)
+                  .join(", ")}
+              </em>
+            ) : null}
           </p>
-
           <button
             type="button"
             className="primary"
@@ -475,57 +604,65 @@ export function AdminDashboard({
           >
             {running ? "Running evals…" : "Run evals"}
           </button>
-          {error && <p className="admin-error">{error}</p>}
+        </div>
+        {error && <p className="admin-error">{error}</p>}
 
-          {running && (
-            <div className="progress-panel">
-              <div className="progress-bar">
-                <div
-                  style={{
-                    width: `${
-                      progress.total === 0
-                        ? 0
-                        : (progress.completed / progress.total) * 100
-                    }%`,
-                  }}
-                />
-              </div>
-              <p>
-                {progress.completed}/{progress.total} · {progress.passed}{" "}
-                passed · {progress.failed} failed
-              </p>
-              <p className="muted">{progress.label}</p>
+        {running && (
+          <div className="progress-panel">
+            <div className="progress-bar">
+              <div
+                style={{
+                  width: `${
+                    progress.total === 0
+                      ? 0
+                      : (progress.completed / progress.total) * 100
+                  }%`,
+                }}
+              />
             </div>
-          )}
-        </section>
+            <p>
+              {progress.completed}/{progress.total} · {progress.passed} passed ·{" "}
+              {progress.failed} failed
+            </p>
+            <p className="muted">{progress.label}</p>
+          </div>
+        )}
+      </section>
 
-        <section className="admin-card">
-          <h2>History</h2>
-          {runs.length === 0 ? (
-            <p className="muted">No runs yet. Start one on the left.</p>
-          ) : (
-            <ul className="run-list">
-              {runs.map((run) => (
-                <li key={run.id}>
-                  <Link href={`/admin/runs/${run.id}`}>
-                    <strong>
-                      {run.passRate != null ? `${run.passRate}%` : "—"} ·{" "}
-                      {run.status}
-                    </strong>
-                    <span>
-                      {formatEstCost(run.summary?.estimatedCostUsd)} est. ·{" "}
-                      {formatLatency(run.summary?.avgLatencyMs)} avg ·{" "}
-                      {run.suiteIds.join(", ")} · {run.modelIds.length} model
-                      {run.modelIds.length === 1 ? "" : "s"}
-                    </span>
-                    <em>{new Date(run.startedAt).toLocaleString()}</em>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+      <section className="admin-card run-history-card">
+        <div className="trends-filter-bar">
+          <div className="trends-filter-main">
+            <h2>History</h2>
+            <p className="admin-help trends-filter-help">
+              Recent runs from this browser and the server. Open a run for
+              case-level detail.
+            </p>
+          </div>
+        </div>
+        {runs.length === 0 ? (
+          <p className="muted">No runs yet. Configure a suite and models above.</p>
+        ) : (
+          <ul className="run-list run-list-compact">
+            {runs.map((run) => (
+              <li key={run.id}>
+                <Link href={`/admin/runs/${run.id}`}>
+                  <strong>
+                    {run.passRate != null ? `${run.passRate}%` : "—"} ·{" "}
+                    {run.status}
+                  </strong>
+                  <span>
+                    {formatEstCost(run.summary?.estimatedCostUsd)} est. ·{" "}
+                    {formatLatency(run.summary?.avgLatencyMs)} avg ·{" "}
+                    {run.suiteIds.join(", ")} · {run.modelIds.length} model
+                    {run.modelIds.length === 1 ? "" : "s"}
+                  </span>
+                  <em>{new Date(run.startedAt).toLocaleString()}</em>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <AdminAuthModal
         open={authOpen}

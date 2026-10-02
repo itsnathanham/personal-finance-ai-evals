@@ -4,6 +4,7 @@ import {
   resolveAvailableModelId,
 } from "@/lib/model";
 import {
+  compareModelsByReleaseDesc,
   MODEL_REGISTRY,
   type ModelDefinition,
   type ModelProvider,
@@ -37,14 +38,24 @@ export function toCatalogModel(m: ModelDefinition): CatalogModel {
   };
 }
 
+const PROVIDER_ORDER: ModelProvider[] = ["anthropic", "openai", "google"];
+
+function byProviderThenReleaseDesc(a: ModelDefinition, b: ModelDefinition) {
+  const pi = PROVIDER_ORDER.indexOf(a.provider) - PROVIDER_ORDER.indexOf(b.provider);
+  if (pi !== 0) return pi;
+  return compareModelsByReleaseDesc(a.id, b.id);
+}
+
 /** Full registry with configured flags (admin shows all; disables missing keys). */
 export function catalogModels(): CatalogModel[] {
-  return MODEL_REGISTRY.map(toCatalogModel);
+  return [...MODEL_REGISTRY].sort(byProviderThenReleaseDesc).map(toCatalogModel);
 }
 
 /** Only models whose provider API key is present (copilot dropdown). */
 export function availableCatalogModels(): CatalogModel[] {
-  return listConfiguredModels().map(toCatalogModel);
+  return listConfiguredModels()
+    .sort(byProviderThenReleaseDesc)
+    .map(toCatalogModel);
 }
 
 export function defaultAvailableModelId(): string {
