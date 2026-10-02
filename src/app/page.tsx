@@ -7,6 +7,7 @@ import {
 } from "@/db/seed-data";
 import { accounts, budgets, goals, transactions, users } from "@/db/schema";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 import {
   DEFAULT_MODEL_ID,
   resolveModelId,
@@ -16,6 +17,7 @@ import {
   defaultAvailableModelId,
 } from "@/lib/models/catalog";
 
+/** Model keys are read at request time; household seed data is cacheable. */
 export const dynamic = "force-dynamic";
 
 async function loadHousehold() {
@@ -117,9 +119,15 @@ async function loadHousehold() {
   };
 }
 
+const getCachedHousehold = unstable_cache(loadHousehold, ["demo-household"], {
+  revalidate: 300,
+});
+
 export default async function Home() {
-  const household = await loadHousehold();
-  const models = availableCatalogModels();
+  const [household, models] = await Promise.all([
+    getCachedHousehold(),
+    Promise.resolve(availableCatalogModels()),
+  ]);
   return (
     <CopilotApp
       household={household}

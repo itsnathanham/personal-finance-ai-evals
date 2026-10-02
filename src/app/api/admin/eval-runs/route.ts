@@ -11,9 +11,14 @@ import { isAllowedModelId } from "@/lib/models/registry";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const rows = await listPersistedRuns(50);
+    const url = new URL(req.url);
+    const limitRaw = Number(url.searchParams.get("limit") ?? 80);
+    const limit = Number.isFinite(limitRaw)
+      ? Math.min(Math.max(limitRaw, 1), 200)
+      : 80;
+    const rows = await listPersistedRuns(limit);
     return NextResponse.json({ runs: rows.map(mapPersistedRun) });
   } catch {
     return NextResponse.json({ runs: [] });

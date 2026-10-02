@@ -15,15 +15,26 @@ type AppDb =
 const globalForDb = globalThis as unknown as {
   __copilotDb?: AppDb;
   __copilotReady?: Promise<AppDb>;
+  __neonSchemaReady?: boolean;
 };
 
-async function createNeonDb(url: string): Promise<AppDb> {
+async function ensureNeonSchema(url: string): Promise<void> {
+  // Once per warm isolate — avoid re-running DDL on every cold request path.
+  if (globalForDb.__neonSchemaReady) return;
   const sql = neon(url);
-  for (const statement of SCHEMA_SQL.split(";")
+  const statements = SCHEMA_SQL.split(";")
     .map((s) => s.trim())
-    .filter(Boolean)) {
+    .filter(Boolean);
+  // Keep sequential: CREATE must precede ALTER/INDEX on the same table.
+  for (const statement of statements) {
     await sql.query(statement);
   }
+  globalForDb.__neonSchemaReady = true;
+}
+
+async function createNeonDb(url: string): Promise<AppDb> {
+  await ensureNeonSchema(url);
+  const sql = neon(url);
   return drizzleNeon({ client: sql, schema });
 }
 

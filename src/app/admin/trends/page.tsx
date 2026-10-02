@@ -1,25 +1,11 @@
 import { AdminTrends } from "@/components/admin-trends";
-import { listPersistedRuns } from "@/lib/evals/job-runner";
-import { mapPersistedRun } from "@/lib/evals/map-run";
-import { normalizeSummary } from "@/lib/evals/trends";
 import { catalogModels } from "@/lib/models/catalog";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminTrendsPage() {
-  let initialRuns: ReturnType<typeof mapPersistedRun>[] = [];
-  try {
-    initialRuns = (await listPersistedRuns(80)).map((r) => {
-      const mapped = mapPersistedRun(r);
-      return {
-        ...mapped,
-        summary: normalizeSummary(mapped.summary),
-      };
-    });
-  } catch {
-    initialRuns = [];
-  }
-
+/**
+ * Model catalog is sync. Trend history loads client-side from localStorage +
+ * /api/admin/eval-runs so the page shell renders without waiting on the DB.
+ */
+export default function AdminTrendsPage() {
   return (
     <AdminTrends
       models={catalogModels().map((m) => ({
@@ -28,7 +14,7 @@ export default async function AdminTrendsPage() {
         provider: m.provider,
         configured: m.configured,
       }))}
-      initialRuns={initialRuns}
+      initialRuns={[]}
     />
   );
 }
