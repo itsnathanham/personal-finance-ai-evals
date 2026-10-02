@@ -1053,8 +1053,31 @@ button.ghost.danger-text {
 }
 
 .trends-models-chevron {
-  color: var(--muted);
-  font-size: 0.9rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.trends-models-toggle:hover .trends-models-chevron {
+  color: var(--accent-2);
+  border-color: color-mix(in oklab, var(--accent-2) 45%, var(--stroke));
+}
+
+.trends-models-chevron-label {
+  letter-spacing: 0.01em;
+}
+
+.trends-models-chevron-icon {
+  display: block;
 }
 
 .trends-models-inline {
