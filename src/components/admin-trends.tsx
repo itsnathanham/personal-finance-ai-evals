@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { AdminExpandChevron } from "@/components/admin-expand-chevron";
 import {
   mergeRunSummaries,
   type HistoryRunSummary,
@@ -13,9 +14,11 @@ import {
   type SuiteFilter,
 } from "@/lib/evals/trends";
 import {
+  PROVIDER_ORDER,
   compareModelsByReleaseDesc,
   getModelLabel,
   getModelProvider,
+  providerLabel,
   type ModelProvider,
 } from "@/lib/models/registry";
 
@@ -47,21 +50,6 @@ type FilterModel = {
   configured: boolean;
   retired: boolean;
 };
-
-function providerTitle(provider: ModelProvider) {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "openai":
-      return "OpenAI";
-    case "google":
-      return "Google Gemini";
-    default: {
-      const _exhaustive: never = provider;
-      return _exhaustive;
-    }
-  }
-}
 
 function modelsWithHistory(runs: HistoryRunSummary[]): Set<string> {
   const ids = new Set<string>();
@@ -106,9 +94,9 @@ function buildFilterModels(
     });
   }
 
-  const order: ModelProvider[] = ["anthropic", "openai", "google"];
   return [...byId.values()].sort((a, b) => {
-    const pi = order.indexOf(a.provider) - order.indexOf(b.provider);
+    const pi =
+      PROVIDER_ORDER.indexOf(a.provider) - PROVIDER_ORDER.indexOf(b.provider);
     if (pi !== 0) return pi;
     if (a.retired !== b.retired) return a.retired ? 1 : -1;
     return compareModelsByReleaseDesc(a.id, b.id);
@@ -299,28 +287,7 @@ export function AdminTrends({
               <strong>Models</strong>
               <em>{summaryBits.join(" · ")}</em>
             </span>
-            <span className="trends-models-chevron" aria-hidden>
-              <span className="trends-models-chevron-label">
-                {modelsOpen ? "Collapse" : "Expand"}
-              </span>
-              <svg
-                className="trends-models-chevron-icon"
-                viewBox="0 0 16 16"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {modelsOpen ? (
-                  <path d="M3 10.5 8 5.5l5 5" />
-                ) : (
-                  <path d="M3 5.5 8 10.5l5-5" />
-                )}
-              </svg>
-            </span>
+            <AdminExpandChevron open={modelsOpen} />
           </button>
           {!modelsOpen && selectedModels.length > 0 && (
             <p className="trends-models-inline muted">
@@ -343,13 +310,13 @@ export function AdminTrends({
               </button>
             </div>
             <div className="trends-provider-columns">
-              {(["anthropic", "openai", "google"] as const).map((provider) => {
+              {PROVIDER_ORDER.map((provider) => {
                 const group = filterModels.filter((m) => m.provider === provider);
                 if (group.length === 0) return null;
                 return (
                   <div key={provider} className="model-provider-block">
                     <h4>
-                      {providerTitle(provider)}
+                      {providerLabel(provider)}
                       <span className="model-provider-count">
                         {
                           group.filter((m) => modelIds.includes(m.id)).length

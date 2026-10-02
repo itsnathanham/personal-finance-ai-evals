@@ -1,5 +1,21 @@
 export type ModelProvider = "anthropic" | "openai" | "google";
 
+export const PROVIDER_ORDER: ModelProvider[] = [
+  "anthropic",
+  "openai",
+  "google",
+];
+
+const PROVIDER_LABEL: Record<ModelProvider, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google Gemini",
+};
+
+export function providerLabel(provider: ModelProvider): string {
+  return PROVIDER_LABEL[provider];
+}
+
 export type ModelDefinition = {
   id: string;
   label: string;

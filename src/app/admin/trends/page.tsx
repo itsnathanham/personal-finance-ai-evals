@@ -10,7 +10,7 @@ export default function AdminTrendsPage() {
     <AdminTrends
       models={catalogModels().map((m) => ({
         id: m.id,
-        label: `${m.label}`,
+        label: m.label,
         provider: m.provider,
         configured: m.configured,
       }))}

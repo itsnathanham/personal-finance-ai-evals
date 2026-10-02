@@ -17,7 +17,6 @@ import {
   defaultAvailableModelId,
 } from "@/lib/models/catalog";
 
-/** Model keys are read at request time; household seed data is cacheable. */
 export const dynamic = "force-dynamic";
 
 async function loadHousehold() {
@@ -124,10 +123,8 @@ const getCachedHousehold = unstable_cache(loadHousehold, ["demo-household"], {
 });
 
 export default async function Home() {
-  const [household, models] = await Promise.all([
-    getCachedHousehold(),
-    Promise.resolve(availableCatalogModels()),
-  ]);
+  const household = await getCachedHousehold();
+  const models = availableCatalogModels();
   return (
     <CopilotApp
       household={household}
