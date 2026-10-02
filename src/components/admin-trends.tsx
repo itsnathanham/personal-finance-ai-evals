@@ -26,6 +26,7 @@ import {
   type SuiteFilter,
 } from "@/lib/evals/trends";
 import {
+  compareModelsByReleaseDesc,
   getModelLabel,
   getModelProvider,
   type ModelProvider,
@@ -225,7 +226,7 @@ function buildFilterModels(
     const pi = order.indexOf(a.provider) - order.indexOf(b.provider);
     if (pi !== 0) return pi;
     if (a.retired !== b.retired) return a.retired ? 1 : -1;
-    return a.label.localeCompare(b.label);
+    return compareModelsByReleaseDesc(a.id, b.id);
   });
 }
 
@@ -494,9 +495,10 @@ export function AdminTrends({
       ) : runs.length === 0 ? (
         <section className="admin-card">
           <p className="muted">
-            No eval history yet.{" "}
-            <Link href="/admin">Run evals</Link> a few times, then return here
-            to see trends.
+            No eval history in this browser yet. Trends merge localStorage with
+            server runs — preview URLs do not share production history.{" "}
+            <Link href="/admin">Run evals</Link> here, or open production to see
+            prior charts.
           </p>
         </section>
       ) : modelIds.length === 0 ? (
@@ -506,8 +508,8 @@ export function AdminTrends({
       ) : kpis.pointCount === 0 ? (
         <section className="admin-card">
           <p className="muted">
-            No matching points for this filter. Try suite = All or run more
-            evals with the selected models.
+            No points for the selected models/suite. Use <strong>With history</strong>{" "}
+            above, switch suite to All, or run evals for these models.
           </p>
         </section>
       ) : (
